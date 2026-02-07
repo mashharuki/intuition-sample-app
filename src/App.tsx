@@ -46,10 +46,13 @@ function App(): ReactElement {
   const { connect, connectors, isPending: isConnecting, error: connectError } =
     useConnect()
   const { disconnect } = useDisconnect()
-  const publicClient = usePublicClient()
-  const { data: walletClient } = useWalletClient()
+  const publicClient = usePublicClient({ chainId })
+  const { data: walletClient } = useWalletClient({ chainId })
   const queryClient = useQueryClient()
   const defaultConnector = useMemo(() => connectors[0], [connectors])
+  const isPublicClientReady = Boolean(publicClient)
+  const isWalletClientReady = Boolean(walletClient)
+  const isWalletReady = isConnected && isPublicClientReady && isWalletClientReady
 
   const isSearchEnabled = searchQuery.length >= SEARCH_MIN_LENGTH_COUNT
   const searchResults = useQuery<GlobalSearchResult>({
@@ -69,8 +72,14 @@ function App(): ReactElement {
   const createAtom = useMutation<CreateAtomResult, Error, { data: string; depositEth: string }>(
     {
       mutationFn: async ({ data, depositEth }): Promise<CreateAtomResult> => {
-        if (!publicClient || !walletClient) {
+        if (!isConnected) {
           throw new Error('Walletが接続されていません')
+        }
+        if (!walletClient) {
+          throw new Error('Walletクライアントを取得できません')
+        }
+        if (!publicClient) {
+          throw new Error('Public clientを取得できません')
         }
         const address = getMultiVaultAddressFromChainId(chainId)
         const depositAmount = parseEther(depositEth)
@@ -101,8 +110,14 @@ function App(): ReactElement {
         objectId,
         depositEth,
       }): Promise<unknown> => {
-        if (!publicClient || !walletClient) {
+        if (!isConnected) {
           throw new Error('Walletが接続されていません')
+        }
+        if (!walletClient) {
+          throw new Error('Walletクライアントを取得できません')
+        }
+        if (!publicClient) {
+          throw new Error('Public clientを取得できません')
         }
         const address = getMultiVaultAddressFromChainId(chainId)
         const depositAmount = parseEther(depositEth)
@@ -198,9 +213,9 @@ function App(): ReactElement {
   }
 
   const isCreateAtomDisabled =
-    !isConnected || newAtomData.trim().length === 0 || createAtom.isPending
+    !isWalletReady || newAtomData.trim().length === 0 || createAtom.isPending
   const isCreateTripleDisabled =
-    !isConnected ||
+    !isWalletReady ||
     tripleSubjectId.trim().length === 0 ||
     triplePredicateId.trim().length === 0 ||
     tripleObjectId.trim().length === 0 ||
