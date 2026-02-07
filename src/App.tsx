@@ -1,8 +1,17 @@
 import {
+  fetcher,
+  GetTriplesDocument,
+  type GetTriplesQuery,
+  type GetTriplesQueryVariables,
+  type Order_By,
+  type Triples_Order_By,
+} from '@0xintuition/graphql'
+import {
   createAtomFromString,
   createTripleStatement,
   getAtomDetails,
   getMultiVaultAddressFromChainId,
+  getTripleDetails,
   globalSearch,
 } from '@0xintuition/sdk'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -26,6 +35,12 @@ type HexAddress = `0x${string}`
 type SubjectTriple = NonNullable<AtomDetails>['as_subject_triples'][number]
 type PredicateTriple = NonNullable<AtomDetails>['as_predicate_triples'][number]
 type ObjectTriple = NonNullable<AtomDetails>['as_object_triples'][number]
+type TripleDetails = Awaited<ReturnType<typeof getTripleDetails>>
+type SubjectTriplesQueryTriple = GetTriplesQuery['triples'][number]
+type TriplesBySubjectResult = {
+  totalCount: number
+  triples: SubjectTriplesQueryTriple[]
+}
 
 const SEARCH_MIN_LENGTH_COUNT = 3
 const SEARCH_STALE_TIME_MS = 1000 * 60
@@ -33,6 +48,7 @@ const ATOM_STALE_TIME_MS = 1000 * 60 * 5
 const ATOMS_LIMIT_COUNT = 10
 const DEFAULT_DEPOSIT_ETH = '0.01'
 const EXPLORER_BASE_URL = 'https://explorer.intuition.systems'
+const SUBJECT_TRIPLES_LIMIT_COUNT = 20
 const TAB_ITEMS = [
   { key: 'explore', label: '検索・詳細' },
   { key: 'atom', label: 'Atom作成' },
@@ -199,6 +215,33 @@ function getDefaultSortKey(kind: TripleKind): SortKey {
   return 'predicate'
 }
 
+async function getTriplesBySubject(
+  subjectId: string,
+  limitCount: number,
+  offsetCount: number,
+): Promise<TriplesBySubjectResult> {
+  const orderBy: Triples_Order_By[] = [
+    { created_at: 'desc' as Order_By },
+  ]
+  const data = await fetcher<
+    GetTriplesQuery,
+    GetTriplesQueryVariables
+  >(GetTriplesDocument, {
+    limit: limitCount,
+    offset: offsetCount,
+    orderBy,
+    where: {
+      subject_id: {
+        _eq: subjectId,
+      },
+    },
+  })()
+  return {
+    totalCount: data.total.aggregate?.count ?? 0,
+    triples: data.triples,
+  }
+}
+
 /**
  * App コンポーネント
  * @returns 
@@ -220,6 +263,9 @@ function App(): ReactElement {
   const [tripleObjectId, setTripleObjectId] = useState<string>('')
   const [tripleDepositEth, setTripleDepositEth] =
     useState<string>(DEFAULT_DEPOSIT_ETH)
+  const [fetchTripleId, setFetchTripleId] = useState<string>('')
+  const [subjectTriplesSubjectId, setSubjectTriplesSubjectId] =
+    useState<string>('')
   const [statusMessage, setStatusMessage] = useState<string>('')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [lastTransactionHash, setLastTransactionHash] = useState<string>('')
@@ -262,6 +308,23 @@ function App(): ReactElement {
     queryKey: ['atom', selectedAtomId],
     queryFn: () => getAtomDetails(selectedAtomId),
     enabled: selectedAtomId.length > 0,
+    staleTime: ATOM_STALE_TIME_MS,
+  })
+  const tripleDetails = useQuery<TripleDetails>({
+    queryKey: ['triple', fetchTripleId],
+    queryFn: () => getTripleDetails(fetchTripleId),
+    enabled: fetchTripleId.length > 0,
+    staleTime: ATOM_STALE_TIME_MS,
+  })
+  const subjectTriplesQuery = useQuery<TriplesBySubjectResult>({
+    queryKey: ['triplesBySubject', subjectTriplesSubjectId],
+    queryFn: () =>
+      getTriplesBySubject(
+        subjectTriplesSubjectId,
+        SUBJECT_TRIPLES_LIMIT_COUNT,
+        0,
+      ),
+    enabled: subjectTriplesSubjectId.length > 0,
     staleTime: ATOM_STALE_TIME_MS,
   })
 
@@ -443,6 +506,12 @@ function App(): ReactElement {
 
   const handleUpdateTripleDeposit = (value: string): void => {
     setTripleDepositEth(value)
+  }
+  const handleUpdateFetchTripleId = (value: string): void => {
+    setFetchTripleId(value)
+  }
+  const handleUpdateSubjectTriplesSubjectId = (value: string): void => {
+    setSubjectTriplesSubjectId(value)
   }
 
   const handleSelectTab = (tabKey: TabKey): void => {
@@ -1139,6 +1208,121 @@ function App(): ReactElement {
             >
               {createTriple.isPending ? '作成中...' : 'Triple作成'}
             </button>
+          </section>
+          <section className="panel">
+            <h2>Triple 取得</h2>
+            <input
+              className="input"
+              type="text"
+              placeholder="Triple ID (term_id)"
+              value={fetchTripleId}
+              onChange={(event) => handleUpdateFetchTripleId(event.target.value)}
+            />
+            <div className="muted">IDを入力すると自動で取得します</div>
+            {tripleDetails.isLoading && <div>取得中...</div>}
+            {tripleDetails.data && (
+              <div className="atom-value">
+                <div className="atom-section-title">Triple 詳細</div>
+                <div className="atom-info-grid">
+                  <div className="atom-info">
+                    <div className="atom-info-label">Triple ID</div>
+                    <div className="atom-info-value">
+                      {tripleDetails.data.term_id}
+                    </div>
+                  </div>
+                  <div className="atom-info">
+                    <div className="atom-info-label">Tx</div>
+                    <a
+                      className="atom-info-link"
+                      href={getTransactionUrl(tripleDetails.data.transaction_hash)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {tripleDetails.data.transaction_hash}
+                    </a>
+                  </div>
+                  <div className="atom-info">
+                    <div className="atom-info-label">作成者</div>
+                    <div className="atom-info-value">
+                      {tripleDetails.data.creator?.label ??
+                        tripleDetails.data.creator_id}
+                    </div>
+                  </div>
+                  <div className="atom-info">
+                    <div className="atom-info-label">作成日時</div>
+                    <div className="atom-info-value">
+                      {formatDateLabel(tripleDetails.data.created_at)}
+                    </div>
+                  </div>
+                </div>
+                <div className="triple-item">
+                  <span className="triple-node">
+                    {getNodeLabel(tripleDetails.data.subject)}
+                  </span>
+                  <span className="triple-arrow">—</span>
+                  <span className="triple-predicate strong">
+                    {getNodeLabel(tripleDetails.data.predicate)}
+                  </span>
+                  <span className="triple-arrow">→</span>
+                  <span className="triple-node">
+                    {getNodeLabel(tripleDetails.data.object)}
+                  </span>
+                </div>
+              </div>
+            )}
+            {!tripleDetails.isLoading &&
+              fetchTripleId &&
+              !tripleDetails.data && (
+                <div className="muted">該当するTripleが見つかりません</div>
+              )}
+          </section>
+          <section className="panel">
+            <h2>SubjectでTriple一覧取得</h2>
+            <input
+              className="input"
+              type="text"
+              placeholder="Subject ID (term_id)"
+              value={subjectTriplesSubjectId}
+              onChange={(event) =>
+                handleUpdateSubjectTriplesSubjectId(event.target.value)
+              }
+            />
+            <div className="muted">Subject IDを入力すると自動で取得します</div>
+            {subjectTriplesQuery.isLoading && <div>取得中...</div>}
+            {subjectTriplesQuery.isError && (
+              <div className="message error">
+                {subjectTriplesQuery.error instanceof Error
+                  ? subjectTriplesQuery.error.message
+                  : '取得に失敗しました'}
+              </div>
+            )}
+            {subjectTriplesQuery.data && (
+              <div className="atom-value">
+                <div className="atom-section-title">取得結果</div>
+                <div className="muted">
+                  {subjectTriplesQuery.data.totalCount} 件中{' '}
+                  {subjectTriplesQuery.data.triples.length} 件を表示
+                </div>
+                {subjectTriplesQuery.data.triples.length === 0 && (
+                  <div className="muted">該当するTripleがありません</div>
+                )}
+                {subjectTriplesQuery.data.triples.map((triple) => (
+                  <div key={triple.term_id} className="triple-item">
+                    <span className="triple-node strong">
+                      {getNodeLabel(triple.subject)}
+                    </span>
+                    <span className="triple-arrow">—</span>
+                    <span className="triple-predicate">
+                      {getNodeLabel(triple.predicate)}
+                    </span>
+                    <span className="triple-arrow">→</span>
+                    <span className="triple-node">
+                      {getNodeLabel(triple.object)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         </div>
       )}
