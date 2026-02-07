@@ -23,6 +23,9 @@ type GlobalSearchResult = Awaited<ReturnType<typeof globalSearch>>
 type CreateAtomResult = Awaited<ReturnType<typeof createAtomFromString>>
 type CreateTripleResult = Awaited<ReturnType<typeof createTripleStatement>>
 type HexAddress = `0x${string}`
+type SubjectTriple = NonNullable<AtomDetails>['as_subject_triples'][number]
+type PredicateTriple = NonNullable<AtomDetails>['as_predicate_triples'][number]
+type ObjectTriple = NonNullable<AtomDetails>['as_object_triples'][number]
 
 const SEARCH_MIN_LENGTH_COUNT = 3
 const SEARCH_STALE_TIME_MS = 1000 * 60
@@ -66,6 +69,18 @@ type AtomValueInfo = {
   image?: string
 }
 type TripleKind = 'subject' | 'predicate' | 'object'
+type TripleNodeKey = 'subject' | 'predicate' | 'object'
+type SortOrder = 'asc' | 'desc'
+type SortKey = 'subject' | 'predicate' | 'object' | 'term'
+type ModalTriple =
+  | SubjectTriple
+  | PredicateTriple
+  | ObjectTriple
+type TripleDisplay = {
+  subjectLabel: string
+  predicateLabel: string
+  objectLabel: string
+}
 
 function getDisplayText(value: string, maxLengthCount: number): string {
   if (value.length <= maxLengthCount) {
@@ -177,6 +192,13 @@ function getAtomSecondaryLabel(atom: AtomDetails | null | undefined): string {
   return ''
 }
 
+function getDefaultSortKey(kind: TripleKind): SortKey {
+  if (kind === 'predicate') {
+    return 'subject'
+  }
+  return 'predicate'
+}
+
 /**
  * App コンポーネント
  * @returns 
@@ -186,6 +208,9 @@ function App(): ReactElement {
   const [isTripleModalOpen, setIsTripleModalOpen] = useState<boolean>(false)
   const [tripleModalKind, setTripleModalKind] =
     useState<TripleKind>('subject')
+  const [tripleFilterQuery, setTripleFilterQuery] = useState<string>('')
+  const [tripleSortKey, setTripleSortKey] = useState<SortKey>('predicate')
+  const [tripleSortOrder, setTripleSortOrder] = useState<SortOrder>('asc')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedAtomId, setSelectedAtomId] = useState<string>('')
   const [newAtomData, setNewAtomData] = useState<string>('')
@@ -426,11 +451,23 @@ function App(): ReactElement {
 
   const handleOpenTripleModal = (kind: TripleKind): void => {
     setTripleModalKind(kind)
+    setTripleFilterQuery('')
+    setTripleSortOrder('asc')
+    setTripleSortKey(getDefaultSortKey(kind))
     setIsTripleModalOpen(true)
   }
 
   const handleCloseTripleModal = (): void => {
     setIsTripleModalOpen(false)
+  }
+  const handleUpdateTripleFilterQuery = (value: string): void => {
+    setTripleFilterQuery(value)
+  }
+  const handleUpdateTripleSortKey = (value: SortKey): void => {
+    setTripleSortKey(value)
+  }
+  const handleToggleTripleSortOrder = (): void => {
+    setTripleSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
   }
 
   const isCreateAtomDisabled =
@@ -479,6 +516,84 @@ function App(): ReactElement {
       : tripleModalKind === 'predicate'
         ? '述語としての関連'
         : '目的語としての関連'
+  const getTripleNodeLabel = (
+    triple: ModalTriple,
+    nodeKey: TripleNodeKey,
+  ): string => {
+    if (nodeKey === 'subject' && 'subject' in triple) {
+      return getNodeLabel(triple.subject)
+    }
+    if (nodeKey === 'predicate' && 'predicate' in triple) {
+      return getNodeLabel(triple.predicate)
+    }
+    if (nodeKey === 'object' && 'object' in triple) {
+      return getNodeLabel(triple.object)
+    }
+    return ''
+  }
+  const getTripleDisplay = (
+    triple: ModalTriple,
+    kind: TripleKind,
+    atom: AtomDetails | null,
+  ): TripleDisplay => {
+    const atomLabel = getNodeLabel(atom)
+    if (kind === 'subject') {
+      return {
+        subjectLabel: atomLabel,
+        predicateLabel: getTripleNodeLabel(triple, 'predicate'),
+        objectLabel: getTripleNodeLabel(triple, 'object'),
+      }
+    }
+    if (kind === 'predicate') {
+      return {
+        subjectLabel: getTripleNodeLabel(triple, 'subject'),
+        predicateLabel: atomLabel,
+        objectLabel: getTripleNodeLabel(triple, 'object'),
+      }
+    }
+    return {
+      subjectLabel: getTripleNodeLabel(triple, 'subject'),
+      predicateLabel: getTripleNodeLabel(triple, 'predicate'),
+      objectLabel: atomLabel,
+    }
+  }
+  const tripleIncludesQuery = (triple: ModalTriple, query: string): boolean => {
+    const text = [
+      getTripleNodeLabel(triple, 'subject'),
+      getTripleNodeLabel(triple, 'predicate'),
+      getTripleNodeLabel(triple, 'object'),
+      triple.term_id,
+    ]
+      .join(' ')
+      .toLowerCase()
+    return text.includes(query.toLowerCase())
+  }
+  const getTripleSortValue = (
+    triple: ModalTriple,
+    key: SortKey,
+  ): string => {
+    if (key === 'term') {
+      return triple.term_id
+    }
+    if (key === 'subject') {
+      return getTripleNodeLabel(triple, 'subject')
+    }
+    if (key === 'predicate') {
+      return getTripleNodeLabel(triple, 'predicate')
+    }
+    return getTripleNodeLabel(triple, 'object')
+  }
+  const filteredTriples = modalTriples.filter((t) =>
+    tripleFilterQuery.trim().length === 0
+      ? true
+      : tripleIncludesQuery(t, tripleFilterQuery),
+  )
+  const sortedTriples = filteredTriples.slice().sort((a, b) => {
+    const av = getTripleSortValue(a, tripleSortKey)
+    const bv = getTripleSortValue(b, tripleSortKey)
+    const cmp = av.localeCompare(bv)
+    return tripleSortOrder === 'asc' ? cmp : -cmp
+  })
 
   return (
     <div className="app">
@@ -854,7 +969,7 @@ function App(): ReactElement {
                     <div>
                       <div className="modal-title">{modalTitle}</div>
                       <div className="modal-subtitle">
-                        {modalTriples.length} 件
+                        {sortedTriples.length} 件
                       </div>
                     </div>
                     <button
@@ -865,73 +980,87 @@ function App(): ReactElement {
                       閉じる
                     </button>
                   </div>
+                  <div className="modal-controls">
+                    <input
+                      className="input"
+                      type="text"
+                      placeholder="フィルタ（subject/predicate/object/ID）"
+                      value={tripleFilterQuery}
+                      onChange={(e) =>
+                        handleUpdateTripleFilterQuery(e.target.value)
+                      }
+                    />
+                    <div className="controls-row">
+                      <select
+                        className="select"
+                        value={tripleSortKey}
+                        onChange={(e) =>
+                          handleUpdateTripleSortKey(e.target.value as SortKey)
+                        }
+                      >
+                        {tripleModalKind !== 'subject' && (
+                          <option value="subject">subject</option>
+                        )}
+                        {tripleModalKind !== 'predicate' && (
+                          <option value="predicate">predicate</option>
+                        )}
+                        {tripleModalKind !== 'object' && (
+                          <option value="object">object</option>
+                        )}
+                        <option value="term">term</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="button"
+                        onClick={handleToggleTripleSortOrder}
+                      >
+                        {tripleSortOrder === 'asc' ? '昇順' : '降順'}
+                      </button>
+                    </div>
+                  </div>
                   <div className="modal-body">
                     {modalTriples.length === 0 && (
                       <div className="muted">まだ関連がありません</div>
                     )}
-                    {tripleModalKind === 'subject' &&
-                      subjectTriples.map((triple) => (
+                    {sortedTriples.map((triple) => {
+                      const display = getTripleDisplay(
+                        triple,
+                        tripleModalKind,
+                        atomData,
+                      )
+                      return (
                         <div key={triple.term_id} className="modal-item">
                           <div className="triple-item">
-                            <span className="triple-node">
-                              {getNodeLabel(atomData)}
+                            <span
+                              className={`triple-node ${
+                                tripleModalKind === 'subject' ? 'strong' : ''
+                              }`}
+                            >
+                              {display.subjectLabel}
                             </span>
                             <span className="triple-arrow">—</span>
-                            <span className="triple-predicate strong">
-                              {getNodeLabel(triple.predicate)}
+                            <span
+                              className={`triple-predicate ${
+                                tripleModalKind === 'predicate' ? 'strong' : ''
+                              }`}
+                            >
+                              {display.predicateLabel}
                             </span>
                             <span className="triple-arrow">→</span>
-                            <span className="triple-node">
-                              {getNodeLabel(triple.object)}
+                            <span
+                              className={`triple-node ${
+                                tripleModalKind === 'object' ? 'strong' : ''
+                              }`}
+                            >
+                              {display.objectLabel}
                             </span>
                           </div>
                           <div className="modal-meta">
                             Triple ID: {triple.term_id}
                           </div>
                         </div>
-                      ))}
-                    {tripleModalKind === 'predicate' &&
-                      predicateTriples.map((triple) => (
-                        <div key={triple.term_id} className="modal-item">
-                          <div className="triple-item">
-                            <span className="triple-node">
-                              {getNodeLabel(triple.subject)}
-                            </span>
-                            <span className="triple-arrow">—</span>
-                            <span className="triple-predicate strong">
-                              {getNodeLabel(atomData)}
-                            </span>
-                            <span className="triple-arrow">→</span>
-                            <span className="triple-node">
-                              {getNodeLabel(triple.object)}
-                            </span>
-                          </div>
-                          <div className="modal-meta">
-                            Triple ID: {triple.term_id}
-                          </div>
-                        </div>
-                      ))}
-                    {tripleModalKind === 'object' &&
-                      objectTriples.map((triple) => (
-                        <div key={triple.term_id} className="modal-item">
-                          <div className="triple-item">
-                            <span className="triple-node">
-                              {getNodeLabel(triple.subject)}
-                            </span>
-                            <span className="triple-arrow">—</span>
-                            <span className="triple-predicate strong">
-                              {getNodeLabel(triple.predicate)}
-                            </span>
-                            <span className="triple-arrow">→</span>
-                            <span className="triple-node">
-                              {getNodeLabel(atomData)}
-                            </span>
-                          </div>
-                          <div className="modal-meta">
-                            Triple ID: {triple.term_id}
-                          </div>
-                        </div>
-                      ))}
+                      )
+                    })}
                   </div>
                 </div>
               </div>
