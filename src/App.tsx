@@ -65,6 +65,7 @@ type AtomValueInfo = {
   url?: string
   image?: string
 }
+type TripleKind = 'subject' | 'predicate' | 'object'
 
 function getDisplayText(value: string, maxLengthCount: number): string {
   if (value.length <= maxLengthCount) {
@@ -182,6 +183,9 @@ function getAtomSecondaryLabel(atom: AtomDetails | null | undefined): string {
  */
 function App(): ReactElement {
   const [activeTab, setActiveTab] = useState<TabKey>('explore')
+  const [isTripleModalOpen, setIsTripleModalOpen] = useState<boolean>(false)
+  const [tripleModalKind, setTripleModalKind] =
+    useState<TripleKind>('subject')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedAtomId, setSelectedAtomId] = useState<string>('')
   const [newAtomData, setNewAtomData] = useState<string>('')
@@ -420,6 +424,15 @@ function App(): ReactElement {
     setActiveTab(tabKey)
   }
 
+  const handleOpenTripleModal = (kind: TripleKind): void => {
+    setTripleModalKind(kind)
+    setIsTripleModalOpen(true)
+  }
+
+  const handleCloseTripleModal = (): void => {
+    setIsTripleModalOpen(false)
+  }
+
   const isCreateAtomDisabled =
     !isWalletReady ||
     !isChainSupported ||
@@ -454,6 +467,18 @@ function App(): ReactElement {
     objectTriples.length - objectPreview.length,
     0,
   )
+  const modalTriples =
+    tripleModalKind === 'subject'
+      ? subjectTriples
+      : tripleModalKind === 'predicate'
+        ? predicateTriples
+        : objectTriples
+  const modalTitle =
+    tripleModalKind === 'subject'
+      ? '主語としての関連'
+      : tripleModalKind === 'predicate'
+        ? '述語としての関連'
+        : '目的語としての関連'
 
   return (
     <div className="app">
@@ -724,6 +749,15 @@ function App(): ReactElement {
                           {subjectMoreCount > 0 && (
                             <div className="muted">他 {subjectMoreCount} 件</div>
                           )}
+                          {subjectTriples.length > 0 && (
+                            <button
+                              type="button"
+                              className="text-button"
+                              onClick={() => handleOpenTripleModal('subject')}
+                            >
+                              全件表示
+                            </button>
+                          )}
                         </div>
 
                         <div className="triple-column">
@@ -751,6 +785,15 @@ function App(): ReactElement {
                           ))}
                           {predicateMoreCount > 0 && (
                             <div className="muted">他 {predicateMoreCount} 件</div>
+                          )}
+                          {predicateTriples.length > 0 && (
+                            <button
+                              type="button"
+                              className="text-button"
+                              onClick={() => handleOpenTripleModal('predicate')}
+                            >
+                              全件表示
+                            </button>
                           )}
                         </div>
 
@@ -780,6 +823,15 @@ function App(): ReactElement {
                           {objectMoreCount > 0 && (
                             <div className="muted">他 {objectMoreCount} 件</div>
                           )}
+                          {objectTriples.length > 0 && (
+                            <button
+                              type="button"
+                              className="text-button"
+                              onClick={() => handleOpenTripleModal('object')}
+                            >
+                              全件表示
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -788,6 +840,101 @@ function App(): ReactElement {
               </>
             ) : (
               <div className="muted">Atomを選択してください</div>
+            )}
+            {isTripleModalOpen && atomData && (
+              <div className="modal-backdrop" onClick={handleCloseTripleModal}>
+                <div
+                  className="modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={modalTitle}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="modal-header">
+                    <div>
+                      <div className="modal-title">{modalTitle}</div>
+                      <div className="modal-subtitle">
+                        {modalTriples.length} 件
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="modal-close"
+                      onClick={handleCloseTripleModal}
+                    >
+                      閉じる
+                    </button>
+                  </div>
+                  <div className="modal-body">
+                    {modalTriples.length === 0 && (
+                      <div className="muted">まだ関連がありません</div>
+                    )}
+                    {tripleModalKind === 'subject' &&
+                      subjectTriples.map((triple) => (
+                        <div key={triple.term_id} className="modal-item">
+                          <div className="triple-item">
+                            <span className="triple-node">
+                              {getNodeLabel(atomData)}
+                            </span>
+                            <span className="triple-arrow">—</span>
+                            <span className="triple-predicate strong">
+                              {getNodeLabel(triple.predicate)}
+                            </span>
+                            <span className="triple-arrow">→</span>
+                            <span className="triple-node">
+                              {getNodeLabel(triple.object)}
+                            </span>
+                          </div>
+                          <div className="modal-meta">
+                            Triple ID: {triple.term_id}
+                          </div>
+                        </div>
+                      ))}
+                    {tripleModalKind === 'predicate' &&
+                      predicateTriples.map((triple) => (
+                        <div key={triple.term_id} className="modal-item">
+                          <div className="triple-item">
+                            <span className="triple-node">
+                              {getNodeLabel(triple.subject)}
+                            </span>
+                            <span className="triple-arrow">—</span>
+                            <span className="triple-predicate strong">
+                              {getNodeLabel(atomData)}
+                            </span>
+                            <span className="triple-arrow">→</span>
+                            <span className="triple-node">
+                              {getNodeLabel(triple.object)}
+                            </span>
+                          </div>
+                          <div className="modal-meta">
+                            Triple ID: {triple.term_id}
+                          </div>
+                        </div>
+                      ))}
+                    {tripleModalKind === 'object' &&
+                      objectTriples.map((triple) => (
+                        <div key={triple.term_id} className="modal-item">
+                          <div className="triple-item">
+                            <span className="triple-node">
+                              {getNodeLabel(triple.subject)}
+                            </span>
+                            <span className="triple-arrow">—</span>
+                            <span className="triple-predicate strong">
+                              {getNodeLabel(triple.predicate)}
+                            </span>
+                            <span className="triple-arrow">→</span>
+                            <span className="triple-node">
+                              {getNodeLabel(atomData)}
+                            </span>
+                          </div>
+                          <div className="modal-meta">
+                            Triple ID: {triple.term_id}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
             )}
           </section>
         </div>
