@@ -35,6 +35,8 @@ const TAB_ITEMS = [
   { key: 'atom', label: 'Atom作成' },
   { key: 'triple', label: 'Triple作成' },
 ] as const
+const MAX_TRIPLE_PREVIEW_COUNT = 3
+const MAX_NODE_LABEL_LENGTH_COUNT = 36
 const SUPPORTED_CHAIN_LABELS: Record<number, string> = {
   1155: 'Intuition Mainnet (1155)',
   13579: 'Intuition Testnet (13579)',
@@ -56,6 +58,123 @@ function getTransactionUrl(hash: string): string {
 }
 
 type TabKey = (typeof TAB_ITEMS)[number]['key']
+type AtomValueInfo = {
+  typeLabel: string
+  name?: string
+  description?: string
+  url?: string
+  image?: string
+}
+
+function getDisplayText(value: string, maxLengthCount: number): string {
+  if (value.length <= maxLengthCount) {
+    return value
+  }
+  return `${value.slice(0, Math.max(maxLengthCount - 1, 0))}…`
+}
+
+function formatDateLabel(value: unknown): string {
+  if (!value) {
+    return '-'
+  }
+  const date = new Date(String(value))
+  if (Number.isNaN(date.getTime())) {
+    return String(value)
+  }
+  return date.toLocaleString('ja-JP')
+}
+
+function getNodeLabel(
+  node?: {
+    label?: string | null
+    data?: string | null
+    term_id?: string
+    emoji?: string | null
+  } | null | undefined,
+): string {
+  if (!node) {
+    return '-'
+  }
+  const base =
+    node.label ??
+    node.data ??
+    node.term_id ??
+    '-'
+  const label = node.emoji ? `${node.emoji} ${base}` : base
+  return getDisplayText(label, MAX_NODE_LABEL_LENGTH_COUNT)
+}
+
+function getAtomValueInfo(
+  atom: AtomDetails | null | undefined,
+): AtomValueInfo | null {
+  if (!atom?.value) {
+    return null
+  }
+  if (atom.value.person) {
+    return {
+      typeLabel: '人物',
+      name: atom.value.person.name ?? undefined,
+      description: atom.value.person.description ?? undefined,
+      url: atom.value.person.url ?? undefined,
+      image: atom.value.person.image ?? undefined,
+    }
+  }
+  if (atom.value.organization) {
+    return {
+      typeLabel: '組織',
+      name: atom.value.organization.name ?? undefined,
+      description: atom.value.organization.description ?? undefined,
+      url: atom.value.organization.url ?? undefined,
+      image: atom.value.organization.image ?? undefined,
+    }
+  }
+  if (atom.value.thing) {
+    return {
+      typeLabel: 'モノ',
+      name: atom.value.thing.name ?? undefined,
+      description: atom.value.thing.description ?? undefined,
+      url: atom.value.thing.url ?? undefined,
+      image: atom.value.thing.image ?? undefined,
+    }
+  }
+  if (atom.value.account) {
+    return {
+      typeLabel: 'アカウント',
+      name: atom.value.account.label ?? undefined,
+      image: atom.value.account.image ?? undefined,
+    }
+  }
+  return null
+}
+
+function getAtomPrimaryLabel(atom: AtomDetails | null | undefined): string {
+  if (!atom) {
+    return '-'
+  }
+  const valueInfo = getAtomValueInfo(atom)
+  return (
+    atom.label ??
+    valueInfo?.name ??
+    atom.data ??
+    atom.term_id
+  )
+}
+
+function getAtomSecondaryLabel(atom: AtomDetails | null | undefined): string {
+  if (!atom) {
+    return ''
+  }
+  if (atom.label && atom.data) {
+    return getDisplayText(atom.data, MAX_NODE_LABEL_LENGTH_COUNT)
+  }
+  if (atom.label && atom.term_id) {
+    return atom.term_id
+  }
+  if (atom.data && atom.term_id) {
+    return atom.term_id
+  }
+  return ''
+}
 
 /**
  * App コンポーネント
@@ -313,6 +432,28 @@ function App(): ReactElement {
     triplePredicateId.trim().length === 0 ||
     tripleObjectId.trim().length === 0 ||
     createTriple.isPending
+  const atomData = atomDetails.data ?? null
+  const atomPrimaryLabel = getAtomPrimaryLabel(atomData)
+  const atomSecondaryLabel = getAtomSecondaryLabel(atomData)
+  const atomValueInfo = getAtomValueInfo(atomData)
+  const subjectTriples = atomData?.as_subject_triples ?? []
+  const predicateTriples = atomData?.as_predicate_triples ?? []
+  const objectTriples = atomData?.as_object_triples ?? []
+  const subjectPreview = subjectTriples.slice(0, MAX_TRIPLE_PREVIEW_COUNT)
+  const predicatePreview = predicateTriples.slice(0, MAX_TRIPLE_PREVIEW_COUNT)
+  const objectPreview = objectTriples.slice(0, MAX_TRIPLE_PREVIEW_COUNT)
+  const subjectMoreCount = Math.max(
+    subjectTriples.length - subjectPreview.length,
+    0,
+  )
+  const predicateMoreCount = Math.max(
+    predicateTriples.length - predicatePreview.length,
+    0,
+  )
+  const objectMoreCount = Math.max(
+    objectTriples.length - objectPreview.length,
+    0,
+  )
 
   return (
     <div className="app">
@@ -434,10 +575,215 @@ function App(): ReactElement {
               <>
                 <div className="muted">選択中: {selectedAtomId}</div>
                 {atomDetails.isLoading && <div>取得中...</div>}
-                {atomDetails.data && (
-                  <pre className="code">
-                    {JSON.stringify(atomDetails.data, null, 2)}
-                  </pre>
+                {atomData && (
+                  <div className="atom-detail">
+                    <div className="atom-hero">
+                      <div className="atom-identity">
+                        <div className="atom-title">{atomPrimaryLabel}</div>
+                        {atomSecondaryLabel && (
+                          <div className="atom-subtitle">
+                            {atomSecondaryLabel}
+                          </div>
+                        )}
+                        <div className="atom-meta">
+                          {atomData.emoji && (
+                            <span className="atom-chip">{atomData.emoji}</span>
+                          )}
+                          <span className="atom-chip">
+                            Type: {String(atomData.type ?? '-')}
+                          </span>
+                          <span className="atom-chip">
+                            Created: {formatDateLabel(atomData.created_at)}
+                          </span>
+                          <span className="atom-chip">
+                            Creator:{' '}
+                            {atomData.creator?.label ?? atomData.creator_id}
+                          </span>
+                        </div>
+                      </div>
+                      {atomData.image && (
+                        <div className="atom-image">
+                          <img src={atomData.image} alt={atomPrimaryLabel} />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="atom-info-grid">
+                      <div className="atom-info">
+                        <div className="atom-info-label">Atom ID</div>
+                        <div className="atom-info-value">{atomData.term_id}</div>
+                      </div>
+                      <div className="atom-info">
+                        <div className="atom-info-label">Tx</div>
+                        <a
+                          className="atom-info-link"
+                          href={getTransactionUrl(atomData.transaction_hash)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {atomData.transaction_hash}
+                        </a>
+                      </div>
+                      <div className="atom-info">
+                        <div className="atom-info-label">Wallet</div>
+                        <div className="atom-info-value">
+                          {atomData.wallet_id}
+                        </div>
+                      </div>
+                    </div>
+
+                    {atomValueInfo && (
+                      <div className="atom-value">
+                        <div className="atom-section-title">
+                          Value: {atomValueInfo.typeLabel}
+                        </div>
+                        <div className="atom-value-body">
+                          {atomValueInfo.image && (
+                            <div className="atom-value-image">
+                              <img
+                                src={atomValueInfo.image}
+                                alt={atomValueInfo.name ?? atomPrimaryLabel}
+                              />
+                            </div>
+                          )}
+                          <div className="atom-value-text">
+                            {atomValueInfo.name && (
+                              <div className="atom-value-title">
+                                {atomValueInfo.name}
+                              </div>
+                            )}
+                            {atomValueInfo.description && (
+                              <div className="atom-value-description">
+                                {atomValueInfo.description}
+                              </div>
+                            )}
+                            {atomValueInfo.url && (
+                              <a
+                                className="atom-value-link"
+                                href={atomValueInfo.url}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                {atomValueInfo.url}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="atom-graph">
+                      <div className="atom-section-title">
+                        Knowledge Graph
+                      </div>
+                      <div className="graph-summary">
+                        <div className="graph-card">
+                          <div className="graph-count">
+                            {subjectTriples.length}
+                          </div>
+                          <div className="graph-label">Subject</div>
+                        </div>
+                        <div className="graph-card highlight">
+                          <div className="graph-count">
+                            {predicateTriples.length}
+                          </div>
+                          <div className="graph-label">Predicate</div>
+                        </div>
+                        <div className="graph-card">
+                          <div className="graph-count">
+                            {objectTriples.length}
+                          </div>
+                          <div className="graph-label">Object</div>
+                        </div>
+                      </div>
+
+                      <div className="triple-columns">
+                        <div className="triple-column">
+                          <div className="triple-label">主語として</div>
+                          {subjectPreview.length === 0 && (
+                            <div className="muted">まだ関連がありません</div>
+                          )}
+                          {subjectPreview.map((triple) => (
+                            <div
+                              key={triple.term_id}
+                              className="triple-item"
+                            >
+                              <span className="triple-node strong">
+                                {getNodeLabel(atomData ?? null)}
+                              </span>
+                              <span className="triple-arrow">—</span>
+                              <span className="triple-predicate">
+                                {getNodeLabel(triple.predicate)}
+                              </span>
+                              <span className="triple-arrow">→</span>
+                              <span className="triple-node">
+                                {getNodeLabel(triple.object)}
+                              </span>
+                            </div>
+                          ))}
+                          {subjectMoreCount > 0 && (
+                            <div className="muted">他 {subjectMoreCount} 件</div>
+                          )}
+                        </div>
+
+                        <div className="triple-column">
+                          <div className="triple-label">述語として</div>
+                          {predicatePreview.length === 0 && (
+                            <div className="muted">まだ関連がありません</div>
+                          )}
+                          {predicatePreview.map((triple) => (
+                            <div
+                              key={triple.term_id}
+                              className="triple-item"
+                            >
+                              <span className="triple-node">
+                                {getNodeLabel(triple.subject)}
+                              </span>
+                              <span className="triple-arrow">—</span>
+                              <span className="triple-predicate strong">
+                                {getNodeLabel(atomData ?? null)}
+                              </span>
+                              <span className="triple-arrow">→</span>
+                              <span className="triple-node">
+                                {getNodeLabel(triple.object)}
+                              </span>
+                            </div>
+                          ))}
+                          {predicateMoreCount > 0 && (
+                            <div className="muted">他 {predicateMoreCount} 件</div>
+                          )}
+                        </div>
+
+                        <div className="triple-column">
+                          <div className="triple-label">目的語として</div>
+                          {objectPreview.length === 0 && (
+                            <div className="muted">まだ関連がありません</div>
+                          )}
+                          {objectPreview.map((triple) => (
+                            <div
+                              key={triple.term_id}
+                              className="triple-item"
+                            >
+                              <span className="triple-node">
+                                {getNodeLabel(triple.subject)}
+                              </span>
+                              <span className="triple-arrow">—</span>
+                              <span className="triple-predicate">
+                                {getNodeLabel(triple.predicate)}
+                              </span>
+                              <span className="triple-arrow">→</span>
+                              <span className="triple-node strong">
+                                {getNodeLabel(atomData ?? null)}
+                              </span>
+                            </div>
+                          ))}
+                          {objectMoreCount > 0 && (
+                            <div className="muted">他 {objectMoreCount} 件</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </>
             ) : (
