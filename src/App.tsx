@@ -21,6 +21,7 @@ import './App.css'
 type AtomDetails = Awaited<ReturnType<typeof getAtomDetails>>
 type GlobalSearchResult = Awaited<ReturnType<typeof globalSearch>>
 type CreateAtomResult = Awaited<ReturnType<typeof createAtomFromString>>
+type CreateTripleResult = Awaited<ReturnType<typeof createTripleStatement>>
 type HexAddress = `0x${string}`
 
 const SEARCH_MIN_LENGTH_COUNT = 3
@@ -28,6 +29,7 @@ const SEARCH_STALE_TIME_MS = 1000 * 60
 const ATOM_STALE_TIME_MS = 1000 * 60 * 5
 const ATOMS_LIMIT_COUNT = 10
 const DEFAULT_DEPOSIT_ETH = '0.01'
+const EXPLORER_BASE_URL = 'https://explorer.intuition.systems'
 const SUPPORTED_CHAIN_LABELS: Record<number, string> = {
   1155: 'Intuition Mainnet (1155)',
   13579: 'Intuition Testnet (13579)',
@@ -44,6 +46,14 @@ function getChainLabel(chainId: number): string {
   )
 }
 
+function getTransactionUrl(hash: string): string {
+  return `${EXPLORER_BASE_URL}/tx/${hash}`
+}
+
+/**
+ * App コンポーネント
+ * @returns 
+ */
 function App(): ReactElement {
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedAtomId, setSelectedAtomId] = useState<string>('')
@@ -56,6 +66,9 @@ function App(): ReactElement {
     useState<string>(DEFAULT_DEPOSIT_ETH)
   const [statusMessage, setStatusMessage] = useState<string>('')
   const [errorMessage, setErrorMessage] = useState<string>('')
+  const [lastTransactionHash, setLastTransactionHash] = useState<string>('')
+  const [lastTransactionLabel, setLastTransactionLabel] =
+    useState<string>('')
 
   const chainId = useChainId()
   const { address, isConnected } = useAccount()
@@ -79,6 +92,8 @@ function App(): ReactElement {
   const isWalletReady = isConnected && isPublicClientReady && isWalletClientReady
 
   const isSearchEnabled = searchQuery.length >= SEARCH_MIN_LENGTH_COUNT
+
+  // 検索結果を取得するhooks
   const searchResults = useQuery<GlobalSearchResult>({
     queryKey: ['search', searchQuery],
     queryFn: () => globalSearch(searchQuery, { atomsLimit: ATOMS_LIMIT_COUNT }),
@@ -86,6 +101,7 @@ function App(): ReactElement {
     staleTime: SEARCH_STALE_TIME_MS,
   })
 
+  // Atomの詳細情報を取得するhooks
   const atomDetails = useQuery<AtomDetails>({
     queryKey: ['atom', selectedAtomId],
     queryFn: () => getAtomDetails(selectedAtomId),
@@ -93,6 +109,7 @@ function App(): ReactElement {
     staleTime: ATOM_STALE_TIME_MS,
   })
 
+  // Atomeを新たに登録するためのhook
   const createAtom = useMutation<CreateAtomResult, Error, { data: string; depositEth: string }>(
     {
       mutationFn: async ({ data, depositEth }): Promise<CreateAtomResult> => {
@@ -123,6 +140,8 @@ function App(): ReactElement {
         setSelectedAtomId(result.state.termId)
         setNewAtomData('')
         setStatusMessage(`Atom作成に成功: ${result.state.termId}`)
+        setLastTransactionHash(result.transactionHash)
+        setLastTransactionLabel('Atom')
         setErrorMessage('')
       },
       onError: (error) => {
@@ -131,14 +150,15 @@ function App(): ReactElement {
     },
   )
 
-  const createTriple = useMutation<unknown, Error, { subjectId: string; predicateId: string; objectId: string; depositEth: string }>(
+  // Tripleを新たに登録するhooks
+  const createTriple = useMutation<CreateTripleResult, Error, { subjectId: string; predicateId: string; objectId: string; depositEth: string }>(
     {
       mutationFn: async ({
         subjectId,
         predicateId,
         objectId,
         depositEth,
-      }): Promise<unknown> => {
+      }): Promise<CreateTripleResult> => {
         if (!isConnected) {
           throw new Error('Walletが接続されていません')
         }
@@ -168,9 +188,11 @@ function App(): ReactElement {
           },
         )
       },
-      onSuccess: () => {
+      onSuccess: (result) => {
         queryClient.invalidateQueries({ queryKey: ['search'] })
         setStatusMessage('Triple作成に成功')
+        setLastTransactionHash(result.transactionHash)
+        setLastTransactionLabel('Triple')
         setErrorMessage('')
         setTripleSubjectId('')
         setTriplePredicateId('')
@@ -182,10 +204,18 @@ function App(): ReactElement {
     },
   )
 
+  /**
+   * Atomeを選択した時の処理
+   * @param atomId 
+   */
   const handleSelectAtom = (atomId: string): void => {
     setSelectedAtomId(atomId)
   }
 
+  /**
+   * Walletに接続する時の処理
+   * @returns 
+   */
   const handleConnectWallet = (): void => {
     if (!defaultConnector) {
       setErrorMessage('利用可能なコネクタが見つかりません')
@@ -194,22 +224,35 @@ function App(): ReactElement {
     connect({ connector: defaultConnector })
   }
 
+  /**
+   * Walletとの接続を遮断する時の処理
+   */
   const handleDisconnectWallet = (): void => {
     disconnect()
   }
 
+  /**
+   * Atomの作成ボタンを押した時の処理
+   */
   const handleCreateAtom = async (): Promise<void> => {
     setStatusMessage('')
     setErrorMessage('')
+    setLastTransactionHash('')
+    setLastTransactionLabel('')
     await createAtom.mutateAsync({
       data: newAtomData,
       depositEth: atomDepositEth,
     })
-  }
+  } 
 
+  /**
+   * Tripleを作成するときの処理
+   */
   const handleCreateTriple = async (): Promise<void> => {
     setStatusMessage('')
     setErrorMessage('')
+    setLastTransactionHash('')
+    setLastTransactionLabel('')
     await createTriple.mutateAsync({
       subjectId: tripleSubjectId,
       predicateId: triplePredicateId,
@@ -300,6 +343,18 @@ function App(): ReactElement {
       <div className="messages">
         {statusMessage && <div className="message success">{statusMessage}</div>}
         {errorMessage && <div className="message error">{errorMessage}</div>}
+        {lastTransactionHash && (
+          <div className="message info">
+            {lastTransactionLabel} Tx:{' '}
+            <a
+              href={getTransactionUrl(lastTransactionHash)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {lastTransactionHash}
+            </a>
+          </div>
+        )}
         {!isChainSupported && (
           <div className="message error">
             対応チェーン: {Object.values(SUPPORTED_CHAIN_LABELS).join(', ')}

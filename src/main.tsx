@@ -6,7 +6,10 @@ import { WagmiProvider, createConfig, http } from 'wagmi'
 import App from './App.tsx'
 import './index.css'
 
+// QraphQL用のクライアント
 const QUERY_CLIENT: QueryClient = new QueryClient()
+
+// Wagmi用の設定
 const WAGMI_CONFIG = createConfig({
   chains: [intuitionTestnet],
   transports: {
