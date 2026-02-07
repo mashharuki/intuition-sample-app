@@ -53,7 +53,9 @@ const SUBJECT_TRIPLES_DEFAULT_LIMIT_COUNT = 20
 const TAB_ITEMS = [
   { key: 'explore', label: '検索・詳細' },
   { key: 'atom', label: 'Atom作成' },
-  { key: 'triple', label: 'Triple作成' },
+  { key: 'triple-create', label: 'Triple作成' },
+  { key: 'triple-fetch', label: 'Triple取得' },
+  { key: 'triple-subject', label: 'Subject Triple一覧' },
 ] as const
 const MAX_TRIPLE_PREVIEW_COUNT = 3
 const MAX_NODE_LABEL_LENGTH_COUNT = 36
@@ -1260,7 +1262,7 @@ function App(): ReactElement {
         </div>
       )}
 
-      {activeTab === 'triple' && (
+      {activeTab === 'triple-create' && (
         <div className="grid">
           <section className="panel">
             <h2>Triple 作成</h2>
@@ -1301,6 +1303,11 @@ function App(): ReactElement {
               {createTriple.isPending ? '作成中...' : 'Triple作成'}
             </button>
           </section>
+        </div>
+      )}
+
+      {activeTab === 'triple-fetch' && (
+        <div className="grid">
           <section className="panel">
             <h2>Triple 取得</h2>
             <input
@@ -1416,6 +1423,11 @@ function App(): ReactElement {
               </div>
             )}
           </section>
+        </div>
+      )}
+
+      {activeTab === 'triple-subject' && (
+        <div className="grid">
           <section className="panel">
             <h2>SubjectでTriple一覧取得</h2>
             <input
