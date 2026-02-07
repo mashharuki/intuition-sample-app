@@ -21,6 +21,7 @@ import './App.css'
 type AtomDetails = Awaited<ReturnType<typeof getAtomDetails>>
 type GlobalSearchResult = Awaited<ReturnType<typeof globalSearch>>
 type CreateAtomResult = Awaited<ReturnType<typeof createAtomFromString>>
+type HexAddress = `0x${string}`
 
 const SEARCH_MIN_LENGTH_COUNT = 3
 const SEARCH_STALE_TIME_MS = 1000 * 60
@@ -50,6 +51,14 @@ function App(): ReactElement {
   const { data: walletClient } = useWalletClient({ chainId })
   const queryClient = useQueryClient()
   const defaultConnector = useMemo(() => connectors[0], [connectors])
+  const multiVaultAddress = useMemo((): HexAddress | undefined => {
+    try {
+      return getMultiVaultAddressFromChainId(chainId) as HexAddress
+    } catch {
+      return undefined
+    }
+  }, [chainId])
+  const isChainSupported = Boolean(multiVaultAddress)
   const isPublicClientReady = Boolean(publicClient)
   const isWalletClientReady = Boolean(walletClient)
   const isWalletReady = isConnected && isPublicClientReady && isWalletClientReady
@@ -81,7 +90,10 @@ function App(): ReactElement {
         if (!publicClient) {
           throw new Error('Public clientを取得できません')
         }
-        const address = getMultiVaultAddressFromChainId(chainId)
+        if (!multiVaultAddress) {
+          throw new Error('このチェーンは未対応です。Mainnetへ切り替えてください')
+        }
+        const address = multiVaultAddress
         const depositAmount = parseEther(depositEth)
         return createAtomFromString(
           { walletClient, publicClient, address },
@@ -119,7 +131,10 @@ function App(): ReactElement {
         if (!publicClient) {
           throw new Error('Public clientを取得できません')
         }
-        const address = getMultiVaultAddressFromChainId(chainId)
+        if (!multiVaultAddress) {
+          throw new Error('このチェーンは未対応です。Mainnetへ切り替えてください')
+        }
+        const address = multiVaultAddress
         const depositAmount = parseEther(depositEth)
         return createTripleStatement(
           { walletClient, publicClient, address },
@@ -213,9 +228,13 @@ function App(): ReactElement {
   }
 
   const isCreateAtomDisabled =
-    !isWalletReady || newAtomData.trim().length === 0 || createAtom.isPending
+    !isWalletReady ||
+    !isChainSupported ||
+    newAtomData.trim().length === 0 ||
+    createAtom.isPending
   const isCreateTripleDisabled =
     !isWalletReady ||
+    !isChainSupported ||
     tripleSubjectId.trim().length === 0 ||
     triplePredicateId.trim().length === 0 ||
     tripleObjectId.trim().length === 0 ||
@@ -262,6 +281,11 @@ function App(): ReactElement {
       <div className="messages">
         {statusMessage && <div className="message success">{statusMessage}</div>}
         {errorMessage && <div className="message error">{errorMessage}</div>}
+        {!isChainSupported && (
+          <div className="message error">
+            このチェーンは未対応です。Mainnetに切り替えてください
+          </div>
+        )}
       </div>
 
       <div className="grid">
