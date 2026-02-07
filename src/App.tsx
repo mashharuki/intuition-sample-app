@@ -48,7 +48,8 @@ const ATOM_STALE_TIME_MS = 1000 * 60 * 5
 const ATOMS_LIMIT_COUNT = 10
 const DEFAULT_DEPOSIT_ETH = '0.01'
 const EXPLORER_BASE_URL = 'https://explorer.intuition.systems'
-const SUBJECT_TRIPLES_LIMIT_COUNT = 20
+const SUBJECT_TRIPLES_LIMIT_OPTIONS = [10, 20, 50] as const
+const SUBJECT_TRIPLES_DEFAULT_LIMIT_COUNT = 20
 const TAB_ITEMS = [
   { key: 'explore', label: '検索・詳細' },
   { key: 'atom', label: 'Atom作成' },
@@ -88,6 +89,7 @@ type TripleKind = 'subject' | 'predicate' | 'object'
 type TripleNodeKey = 'subject' | 'predicate' | 'object'
 type SortOrder = 'asc' | 'desc'
 type SortKey = 'subject' | 'predicate' | 'object' | 'term'
+type SubjectSortKey = 'predicate' | 'object' | 'term'
 type ModalTriple =
   | SubjectTriple
   | PredicateTriple
@@ -215,14 +217,26 @@ function getDefaultSortKey(kind: TripleKind): SortKey {
   return 'predicate'
 }
 
+function getSubjectTriplesOrderBy(
+  key: SubjectSortKey,
+  order: SortOrder,
+): Triples_Order_By[] {
+  const orderBy = order as Order_By
+  if (key === 'predicate') {
+    return [{ predicate: { label: orderBy } }]
+  }
+  if (key === 'object') {
+    return [{ object: { label: orderBy } }]
+  }
+  return [{ term_id: orderBy }]
+}
+
 async function getTriplesBySubject(
   subjectId: string,
   limitCount: number,
   offsetCount: number,
+  orderBy: Triples_Order_By[],
 ): Promise<TriplesBySubjectResult> {
-  const orderBy: Triples_Order_By[] = [
-    { created_at: 'desc' as Order_By },
-  ]
   const data = await fetcher<
     GetTriplesQuery,
     GetTriplesQueryVariables
@@ -249,6 +263,8 @@ async function getTriplesBySubject(
 function App(): ReactElement {
   const [activeTab, setActiveTab] = useState<TabKey>('explore')
   const [isTripleModalOpen, setIsTripleModalOpen] = useState<boolean>(false)
+  const [isTripleGraphModalOpen, setIsTripleGraphModalOpen] =
+    useState<boolean>(false)
   const [tripleModalKind, setTripleModalKind] =
     useState<TripleKind>('subject')
   const [tripleFilterQuery, setTripleFilterQuery] = useState<string>('')
@@ -266,6 +282,16 @@ function App(): ReactElement {
   const [fetchTripleId, setFetchTripleId] = useState<string>('')
   const [subjectTriplesSubjectId, setSubjectTriplesSubjectId] =
     useState<string>('')
+  const [subjectTriplesPageIndex, setSubjectTriplesPageIndex] =
+    useState<number>(0)
+  const [subjectTriplesLimitCount, setSubjectTriplesLimitCount] =
+    useState<number>(SUBJECT_TRIPLES_DEFAULT_LIMIT_COUNT)
+  const [subjectTriplesFilterQuery, setSubjectTriplesFilterQuery] =
+    useState<string>('')
+  const [subjectTriplesSortKey, setSubjectTriplesSortKey] =
+    useState<SubjectSortKey>('predicate')
+  const [subjectTriplesSortOrder, setSubjectTriplesSortOrder] =
+    useState<SortOrder>('asc')
   const [statusMessage, setStatusMessage] = useState<string>('')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [lastTransactionHash, setLastTransactionHash] = useState<string>('')
@@ -317,12 +343,23 @@ function App(): ReactElement {
     staleTime: ATOM_STALE_TIME_MS,
   })
   const subjectTriplesQuery = useQuery<TriplesBySubjectResult>({
-    queryKey: ['triplesBySubject', subjectTriplesSubjectId],
+    queryKey: [
+      'triplesBySubject',
+      subjectTriplesSubjectId,
+      subjectTriplesPageIndex,
+      subjectTriplesLimitCount,
+      subjectTriplesSortKey,
+      subjectTriplesSortOrder,
+    ],
     queryFn: () =>
       getTriplesBySubject(
         subjectTriplesSubjectId,
-        SUBJECT_TRIPLES_LIMIT_COUNT,
-        0,
+        subjectTriplesLimitCount,
+        subjectTriplesPageIndex * subjectTriplesLimitCount,
+        getSubjectTriplesOrderBy(
+          subjectTriplesSortKey,
+          subjectTriplesSortOrder,
+        ),
       ),
     enabled: subjectTriplesSubjectId.length > 0,
     staleTime: ATOM_STALE_TIME_MS,
@@ -512,6 +549,28 @@ function App(): ReactElement {
   }
   const handleUpdateSubjectTriplesSubjectId = (value: string): void => {
     setSubjectTriplesSubjectId(value)
+    setSubjectTriplesPageIndex(0)
+  }
+  const handleUpdateSubjectTriplesFilterQuery = (value: string): void => {
+    setSubjectTriplesFilterQuery(value)
+  }
+  const handleUpdateSubjectTriplesSortKey = (value: SubjectSortKey): void => {
+    setSubjectTriplesSortKey(value)
+    setSubjectTriplesPageIndex(0)
+  }
+  const handleToggleSubjectTriplesSortOrder = (): void => {
+    setSubjectTriplesSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    setSubjectTriplesPageIndex(0)
+  }
+  const handleUpdateSubjectTriplesLimit = (value: number): void => {
+    setSubjectTriplesLimitCount(value)
+    setSubjectTriplesPageIndex(0)
+  }
+  const handleNextSubjectTriplesPage = (): void => {
+    setSubjectTriplesPageIndex((prev) => prev + 1)
+  }
+  const handlePreviousSubjectTriplesPage = (): void => {
+    setSubjectTriplesPageIndex((prev) => Math.max(prev - 1, 0))
   }
 
   const handleSelectTab = (tabKey: TabKey): void => {
@@ -528,6 +587,12 @@ function App(): ReactElement {
 
   const handleCloseTripleModal = (): void => {
     setIsTripleModalOpen(false)
+  }
+  const handleOpenTripleGraphModal = (): void => {
+    setIsTripleGraphModalOpen(true)
+  }
+  const handleCloseTripleGraphModal = (): void => {
+    setIsTripleGraphModalOpen(false)
   }
   const handleUpdateTripleFilterQuery = (value: string): void => {
     setTripleFilterQuery(value)
@@ -579,6 +644,33 @@ function App(): ReactElement {
       : tripleModalKind === 'predicate'
         ? predicateTriples
         : objectTriples
+  const subjectTriplesItems = useMemo(
+    () => subjectTriplesQuery.data?.triples ?? [],
+    [subjectTriplesQuery.data],
+  )
+  const subjectTriplesFiltered = useMemo(() => {
+    const normalizedQuery = subjectTriplesFilterQuery.trim().toLowerCase()
+    if (!normalizedQuery) {
+      return subjectTriplesItems
+    }
+    return subjectTriplesItems.filter((triple) => {
+      const text = [
+        getNodeLabel(triple.predicate),
+        getNodeLabel(triple.object),
+        triple.term_id,
+      ]
+        .join(' ')
+        .toLowerCase()
+      return text.includes(normalizedQuery)
+    })
+  }, [subjectTriplesFilterQuery, subjectTriplesItems])
+  const subjectTriplesPageCount = Math.max(
+    Math.ceil(
+      (subjectTriplesQuery.data?.totalCount ?? 0) /
+        subjectTriplesLimitCount,
+    ),
+    1,
+  )
   const modalTitle =
     tripleModalKind === 'subject'
       ? '主語としての関連'
@@ -1255,19 +1347,13 @@ function App(): ReactElement {
                     </div>
                   </div>
                 </div>
-                <div className="triple-item">
-                  <span className="triple-node">
-                    {getNodeLabel(tripleDetails.data.subject)}
-                  </span>
-                  <span className="triple-arrow">—</span>
-                  <span className="triple-predicate strong">
-                    {getNodeLabel(tripleDetails.data.predicate)}
-                  </span>
-                  <span className="triple-arrow">→</span>
-                  <span className="triple-node">
-                    {getNodeLabel(tripleDetails.data.object)}
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={handleOpenTripleGraphModal}
+                >
+                  ナレッジグラフ表示
+                </button>
               </div>
             )}
             {!tripleDetails.isLoading &&
@@ -1275,6 +1361,60 @@ function App(): ReactElement {
               !tripleDetails.data && (
                 <div className="muted">該当するTripleが見つかりません</div>
               )}
+            {isTripleGraphModalOpen && tripleDetails.data && (
+              <div
+                className="modal-backdrop"
+                onClick={handleCloseTripleGraphModal}
+              >
+                <div
+                  className="modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Triple ナレッジグラフ"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="modal-header">
+                    <div>
+                      <div className="modal-title">Triple ナレッジグラフ</div>
+                      <div className="modal-subtitle">
+                        {tripleDetails.data.term_id}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="modal-close"
+                      onClick={handleCloseTripleGraphModal}
+                    >
+                      閉じる
+                    </button>
+                  </div>
+                  <div className="modal-body">
+                    <div className="triple-graph">
+                      <div className="triple-graph-node">
+                        <div className="triple-graph-label">Subject</div>
+                        <div className="triple-graph-value">
+                          {getNodeLabel(tripleDetails.data.subject)}
+                        </div>
+                      </div>
+                      <div className="triple-graph-link">
+                        <div className="triple-graph-line" />
+                        <div className="triple-graph-badge">
+                          {getNodeLabel(tripleDetails.data.predicate)}
+                        </div>
+                        <div className="triple-graph-arrow">→</div>
+                        <div className="triple-graph-caption">Predicate</div>
+                      </div>
+                      <div className="triple-graph-node">
+                        <div className="triple-graph-label">Object</div>
+                        <div className="triple-graph-value">
+                          {getNodeLabel(tripleDetails.data.object)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
           <section className="panel">
             <h2>SubjectでTriple一覧取得</h2>
@@ -1301,12 +1441,85 @@ function App(): ReactElement {
                 <div className="atom-section-title">取得結果</div>
                 <div className="muted">
                   {subjectTriplesQuery.data.totalCount} 件中{' '}
-                  {subjectTriplesQuery.data.triples.length} 件を表示
+                  {subjectTriplesFiltered.length} 件を表示
                 </div>
-                {subjectTriplesQuery.data.triples.length === 0 && (
+                <div className="modal-controls">
+                  <input
+                    className="input"
+                    type="text"
+                    placeholder="フィルタ（predicate/object/ID）"
+                    value={subjectTriplesFilterQuery}
+                    onChange={(event) =>
+                      handleUpdateSubjectTriplesFilterQuery(
+                        event.target.value,
+                      )
+                    }
+                  />
+                  <div className="controls-row">
+                    <select
+                      className="select"
+                      value={subjectTriplesSortKey}
+                      onChange={(event) =>
+                        handleUpdateSubjectTriplesSortKey(
+                          event.target.value as SubjectSortKey,
+                        )
+                      }
+                    >
+                      <option value="predicate">predicate</option>
+                      <option value="object">object</option>
+                      <option value="term">term</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="button"
+                      onClick={handleToggleSubjectTriplesSortOrder}
+                    >
+                      {subjectTriplesSortOrder === 'asc' ? '昇順' : '降順'}
+                    </button>
+                    <select
+                      className="select"
+                      value={subjectTriplesLimitCount}
+                      onChange={(event) =>
+                        handleUpdateSubjectTriplesLimit(
+                          Number(event.target.value),
+                        )
+                      }
+                    >
+                      {SUBJECT_TRIPLES_LIMIT_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option} 件
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="controls-row">
+                    <button
+                      type="button"
+                      className="button"
+                      onClick={handlePreviousSubjectTriplesPage}
+                      disabled={subjectTriplesPageIndex === 0}
+                    >
+                      前へ
+                    </button>
+                    <div className="muted">
+                      {subjectTriplesPageIndex + 1} / {subjectTriplesPageCount}
+                    </div>
+                    <button
+                      type="button"
+                      className="button"
+                      onClick={handleNextSubjectTriplesPage}
+                      disabled={
+                        subjectTriplesPageIndex + 1 >= subjectTriplesPageCount
+                      }
+                    >
+                      次へ
+                    </button>
+                  </div>
+                </div>
+                {subjectTriplesFiltered.length === 0 && (
                   <div className="muted">該当するTripleがありません</div>
                 )}
-                {subjectTriplesQuery.data.triples.map((triple) => (
+                {subjectTriplesFiltered.map((triple) => (
                   <div key={triple.term_id} className="triple-item">
                     <span className="triple-node strong">
                       {getNodeLabel(triple.subject)}

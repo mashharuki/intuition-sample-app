@@ -397,6 +397,102 @@
   font-size: 12px;
 }
 
+.triple-graph {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(120px, 0.7fr) minmax(140px, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--panel-strong) 92%, transparent);
+  border: 1px solid var(--border);
+}
+
+.triple-graph-node {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  min-height: 72px;
+  justify-content: center;
+}
+
+.triple-graph-label {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.triple-graph-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.triple-graph-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.triple-graph-line {
+  width: 100%;
+  height: 1px;
+  background: color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.triple-graph-badge {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  word-break: break-word;
+}
+
+.triple-graph-arrow {
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.triple-graph-caption {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.triple-graph-value,
+.triple-graph-badge {
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .triple-graph {
+    grid-template-columns: 1fr;
+  }
+
+  .triple-graph-link {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .triple-graph-line {
+    height: 32px;
+    width: 1px;
+  }
+}
+
 .text-button {
   border: none;
   background: transparent;
@@ -418,23 +514,25 @@
   background: rgba(15, 23, 42, 0.4);
   backdrop-filter: blur(8px);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
   z-index: 20;
 }
 
 .modal {
-  width: min(720px, 100%);
-  max-height: min(80vh, 720px);
+  width: 100%;
+  height: 100vh;
+  max-height: 100vh;
+  max-width: 100vw;
   background: var(--panel-strong);
-  border-radius: 20px;
+  border-radius: 0;
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 20px;
+  padding: 24px;
 }
 
 .modal-header {
