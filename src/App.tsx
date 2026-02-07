@@ -30,6 +30,11 @@ const ATOM_STALE_TIME_MS = 1000 * 60 * 5
 const ATOMS_LIMIT_COUNT = 10
 const DEFAULT_DEPOSIT_ETH = '0.01'
 const EXPLORER_BASE_URL = 'https://explorer.intuition.systems'
+const TAB_ITEMS = [
+  { key: 'explore', label: '検索・詳細' },
+  { key: 'atom', label: 'Atom作成' },
+  { key: 'triple', label: 'Triple作成' },
+] as const
 const SUPPORTED_CHAIN_LABELS: Record<number, string> = {
   1155: 'Intuition Mainnet (1155)',
   13579: 'Intuition Testnet (13579)',
@@ -50,11 +55,14 @@ function getTransactionUrl(hash: string): string {
   return `${EXPLORER_BASE_URL}/tx/${hash}`
 }
 
+type TabKey = (typeof TAB_ITEMS)[number]['key']
+
 /**
  * App コンポーネント
  * @returns 
  */
 function App(): ReactElement {
+  const [activeTab, setActiveTab] = useState<TabKey>('explore')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedAtomId, setSelectedAtomId] = useState<string>('')
   const [newAtomData, setNewAtomData] = useState<string>('')
@@ -289,6 +297,10 @@ function App(): ReactElement {
     setTripleDepositEth(value)
   }
 
+  const handleSelectTab = (tabKey: TabKey): void => {
+    setActiveTab(tabKey)
+  }
+
   const isCreateAtomDisabled =
     !isWalletReady ||
     !isChainSupported ||
@@ -362,129 +374,152 @@ function App(): ReactElement {
         )}
       </div>
 
-      <div className="grid">
-        <section className="panel">
-          <h2>検索</h2>
-          <input
-            className="input"
-            type="text"
-            placeholder="3文字以上で検索"
-            value={searchQuery}
-            onChange={(event) => handleUpdateSearchQuery(event.target.value)}
-          />
-          <div className="muted">
-            {isSearchEnabled
-              ? '検索結果を更新中'
-              : '検索条件を入力してください'}
-          </div>
-          {searchResults.isLoading && <div>検索中...</div>}
-          {searchResults.data?.atoms?.length ? (
-            <div className="list">
-              {searchResults.data.atoms.map((atom) => {
-                const atomId = atom.term_id
-                return (
-                <button
-                  key={atomId}
-                  type="button"
-                  className={`list-item ${
-                    atomId === selectedAtomId ? 'active' : ''
-                  }`}
-                  onClick={() => handleSelectAtom(atomId)}
-                >
-                  <div className="list-title">{atom.label ?? atomId}</div>
-                  <div className="list-subtitle">{atomId}</div>
-                </button>
-                )
-              })}
-            </div>
-          ) : (
-            isSearchEnabled && !searchResults.isLoading && <div>結果なし</div>
-          )}
-        </section>
-
-        <section className="panel">
-          <h2>Atom 詳細</h2>
-          {selectedAtomId ? (
-            <>
-              <div className="muted">選択中: {selectedAtomId}</div>
-              {atomDetails.isLoading && <div>取得中...</div>}
-              {atomDetails.data && (
-                <pre className="code">
-                  {JSON.stringify(atomDetails.data, null, 2)}
-                </pre>
-              )}
-            </>
-          ) : (
-            <div className="muted">Atomを選択してください</div>
-          )}
-        </section>
-
-        <section className="panel">
-          <h2>Atom 作成</h2>
-          <input
-            className="input"
-            type="text"
-            placeholder="Atomデータ"
-            value={newAtomData}
-            onChange={(event) => handleUpdateNewAtomData(event.target.value)}
-          />
-          <input
-            className="input"
-            type="text"
-            placeholder="Deposit (ETH)"
-            value={atomDepositEth}
-            onChange={(event) => handleUpdateAtomDeposit(event.target.value)}
-          />
+      <div className="tabs">
+        {TAB_ITEMS.map((tab) => (
           <button
+            key={tab.key}
             type="button"
-            className="button primary"
-            onClick={handleCreateAtom}
-            disabled={isCreateAtomDisabled}
+            className={`tab ${activeTab === tab.key ? 'active' : ''}`}
+            onClick={() => handleSelectTab(tab.key)}
           >
-            {createAtom.isPending ? '作成中...' : 'Atom作成'}
+            {tab.label}
           </button>
-        </section>
-
-        <section className="panel">
-          <h2>Triple 作成</h2>
-          <input
-            className="input"
-            type="text"
-            placeholder="Subject ID"
-            value={tripleSubjectId}
-            onChange={(event) => handleUpdateTripleSubjectId(event.target.value)}
-          />
-          <input
-            className="input"
-            type="text"
-            placeholder="Predicate ID"
-            value={triplePredicateId}
-            onChange={(event) => handleUpdateTriplePredicateId(event.target.value)}
-          />
-          <input
-            className="input"
-            type="text"
-            placeholder="Object ID"
-            value={tripleObjectId}
-            onChange={(event) => handleUpdateTripleObjectId(event.target.value)}
-          />
-          <input
-            className="input"
-            type="text"
-            placeholder="Deposit (ETH)"
-            value={tripleDepositEth}
-            onChange={(event) => handleUpdateTripleDeposit(event.target.value)}
-          />
-          <button
-            type="button"
-            className="button primary"
-            onClick={handleCreateTriple}
-            disabled={isCreateTripleDisabled}
-          >
-            {createTriple.isPending ? '作成中...' : 'Triple作成'}
-          </button>
-        </section>
+        ))}
       </div>
+
+      {activeTab === 'explore' && (
+        <div className="grid">
+          <section className="panel">
+            <h2>検索</h2>
+            <input
+              className="input"
+              type="text"
+              placeholder="3文字以上で検索"
+              value={searchQuery}
+              onChange={(event) => handleUpdateSearchQuery(event.target.value)}
+            />
+            <div className="muted">
+              {isSearchEnabled
+                ? '検索結果を更新中'
+                : '検索条件を入力してください'}
+            </div>
+            {searchResults.isLoading && <div>検索中...</div>}
+            {searchResults.data?.atoms?.length ? (
+              <div className="list">
+                {searchResults.data.atoms.map((atom) => {
+                  const atomId = atom.term_id
+                  return (
+                  <button
+                    key={atomId}
+                    type="button"
+                    className={`list-item ${
+                      atomId === selectedAtomId ? 'active' : ''
+                    }`}
+                    onClick={() => handleSelectAtom(atomId)}
+                  >
+                    <div className="list-title">{atom.label ?? atomId}</div>
+                    <div className="list-subtitle">{atomId}</div>
+                  </button>
+                  )
+                })}
+              </div>
+            ) : (
+              isSearchEnabled && !searchResults.isLoading && <div>結果なし</div>
+            )}
+          </section>
+
+          <section className="panel">
+            <h2>Atom 詳細</h2>
+            {selectedAtomId ? (
+              <>
+                <div className="muted">選択中: {selectedAtomId}</div>
+                {atomDetails.isLoading && <div>取得中...</div>}
+                {atomDetails.data && (
+                  <pre className="code">
+                    {JSON.stringify(atomDetails.data, null, 2)}
+                  </pre>
+                )}
+              </>
+            ) : (
+              <div className="muted">Atomを選択してください</div>
+            )}
+          </section>
+        </div>
+      )}
+
+      {activeTab === 'atom' && (
+        <div className="grid">
+          <section className="panel">
+            <h2>Atom 作成</h2>
+            <input
+              className="input"
+              type="text"
+              placeholder="Atomデータ"
+              value={newAtomData}
+              onChange={(event) => handleUpdateNewAtomData(event.target.value)}
+            />
+            <input
+              className="input"
+              type="text"
+              placeholder="Deposit (ETH)"
+              value={atomDepositEth}
+              onChange={(event) => handleUpdateAtomDeposit(event.target.value)}
+            />
+            <button
+              type="button"
+              className="button primary"
+              onClick={handleCreateAtom}
+              disabled={isCreateAtomDisabled}
+            >
+              {createAtom.isPending ? '作成中...' : 'Atom作成'}
+            </button>
+          </section>
+        </div>
+      )}
+
+      {activeTab === 'triple' && (
+        <div className="grid">
+          <section className="panel">
+            <h2>Triple 作成</h2>
+            <input
+              className="input"
+              type="text"
+              placeholder="Subject ID"
+              value={tripleSubjectId}
+              onChange={(event) => handleUpdateTripleSubjectId(event.target.value)}
+            />
+            <input
+              className="input"
+              type="text"
+              placeholder="Predicate ID"
+              value={triplePredicateId}
+              onChange={(event) => handleUpdateTriplePredicateId(event.target.value)}
+            />
+            <input
+              className="input"
+              type="text"
+              placeholder="Object ID"
+              value={tripleObjectId}
+              onChange={(event) => handleUpdateTripleObjectId(event.target.value)}
+            />
+            <input
+              className="input"
+              type="text"
+              placeholder="Deposit (ETH)"
+              value={tripleDepositEth}
+              onChange={(event) => handleUpdateTripleDeposit(event.target.value)}
+            />
+            <button
+              type="button"
+              className="button primary"
+              onClick={handleCreateTriple}
+              disabled={isCreateTripleDisabled}
+            >
+              {createTriple.isPending ? '作成中...' : 'Triple作成'}
+            </button>
+          </section>
+        </div>
+      )}
     </div>
   )
 }
