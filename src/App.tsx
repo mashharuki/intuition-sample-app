@@ -28,6 +28,21 @@ const SEARCH_STALE_TIME_MS = 1000 * 60
 const ATOM_STALE_TIME_MS = 1000 * 60 * 5
 const ATOMS_LIMIT_COUNT = 10
 const DEFAULT_DEPOSIT_ETH = '0.01'
+const SUPPORTED_CHAIN_LABELS: Record<number, string> = {
+  1155: 'Intuition Mainnet (1155)',
+  13579: 'Intuition Testnet (13579)',
+}
+const OPTIONAL_CHAIN_LABELS: Record<number, string> = {
+  84532: 'Base Sepolia (84532)',
+}
+
+function getChainLabel(chainId: number): string {
+  return (
+    SUPPORTED_CHAIN_LABELS[chainId] ??
+    OPTIONAL_CHAIN_LABELS[chainId] ??
+    `Unknown (${chainId})`
+  )
+}
 
 function App(): ReactElement {
   const [searchQuery, setSearchQuery] = useState<string>('')
@@ -91,7 +106,9 @@ function App(): ReactElement {
           throw new Error('Public clientを取得できません')
         }
         if (!multiVaultAddress) {
-          throw new Error('このチェーンは未対応です。Mainnetへ切り替えてください')
+          throw new Error(
+            'このチェーンは未対応です。Intuition Mainnet / Testnetへ切り替えてください',
+          )
         }
         const address = multiVaultAddress
         const depositAmount = parseEther(depositEth)
@@ -132,7 +149,9 @@ function App(): ReactElement {
           throw new Error('Public clientを取得できません')
         }
         if (!multiVaultAddress) {
-          throw new Error('このチェーンは未対応です。Mainnetへ切り替えてください')
+          throw new Error(
+            'このチェーンは未対応です。Intuition Mainnet / Testnetへ切り替えてください',
+          )
         }
         const address = multiVaultAddress
         const depositAmount = parseEther(depositEth)
@@ -249,7 +268,7 @@ function App(): ReactElement {
         </div>
         <div className="wallet">
           <div className="wallet-info">
-            <span>Chain ID: {chainId}</span>
+            <span>Chain: {getChainLabel(chainId)}</span>
             <span>Account: {address ?? '-'}</span>
           </div>
           <div className="wallet-actions">
@@ -283,7 +302,7 @@ function App(): ReactElement {
         {errorMessage && <div className="message error">{errorMessage}</div>}
         {!isChainSupported && (
           <div className="message error">
-            このチェーンは未対応です。Mainnetに切り替えてください
+            対応チェーン: {Object.values(SUPPORTED_CHAIN_LABELS).join(', ')}
           </div>
         )}
       </div>
