@@ -2,8 +2,8 @@
 marp: true
 theme: gaia
 paginate: true
-header: "Intuition"
-footer: "Confidential | © 2026"
+header: ""
+footer: ""
 backgroundColor: "#f8fafc"
 ---
 
@@ -265,7 +265,7 @@ section.divider h2 {
       <li class="mb-4"><strong>Intuitionとは</strong><br/><span class="text-muted text-sm">プロジェクトの全体像</span></li>
       <li class="mb-4"><strong>ナレッジグラフとは</strong><br/><span class="text-muted text-sm">基礎知識のおさらい</span></li>
       <li class="mb-4"><strong>重要な概念</strong><br/><span class="text-muted text-sm">Atom / Triple / Signal</span></li>
-      <li><strong>期待されるユースケース</strong><br/><span class="text-muted text-sm">実用シナリオ</span></li>
+      <li><strong>ユースケースとデモ</strong><br/><span class="text-muted text-sm">実用シナリオ</span></li>
     </ol>
   </div>
 </div>
@@ -276,24 +276,15 @@ section.divider h2 {
 <div class="grid grid-cols-2 items-center h-full">
   <div class="card items-center text-center">
     <img src="https://pbs.twimg.com/profile_images/1845003681026146306/cf72Ilws_400x400.jpg" class="mx-auto mb-4" style="border-radius: 50%; width: 200px; height: 200px; object-fit: cover; border: 5px solid var(--secondary); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
-    <h3 class="mb-2 text-2xl">Haruki Kondo</h3>
-    <p class="text-muted mb-6">Web3 Engineer / Researcher</p>
-    <a href="https://x.com/haruki_web3" class="text-secondary font-bold no-underline text-xl">
-      𝕏 @haruki_web3
-    </a>
+    <h3 class="mb-2 text-2xl">Haruki𝕏</h3>
+    <p class="text-muted mb-6"><a href="https://x.com/haruki_web3" class="text-secondary font-bold no-underline text-xl">𝕏 @haruki_web3</a></p>
   </div>
   <div class="p-8">
     <h2 class="text-3xl mb-6 border-b-0">Speaker</h2>
     <p class="text-xl leading-relaxed mb-8">
-      <strong>Intuition</strong> のエコシステムと<br/>
-      分散型ナレッジグラフの可能性について、<br/>
-      技術的な観点から解説します。
+      <strong>Intuition</strong> のエコシステムの<br/>
+      可能性について技術的な<br/>観点から解説します。
     </p>
-    <div class="p-6 bg-white rounded-xl border-l-8 border-secondary shadow-sm">
-      <p class="text-muted italic text-lg">
-        "Building the Trust Layer for the Internet"
-      </p>
-    </div>
   </div>
 </div>
 
@@ -321,9 +312,9 @@ section.divider h2 {
   </div>
   <div class="card">
     <ul class="text-lg">
-      <li class="mb-4">世界初の<strong>トークンキュレーテッド・ナレッジグラフ</strong></li>
-      <li class="mb-4">ネイティブトークン <strong>$TRUST</strong> によるインセンティブ設計</li>
-      <li><strong>Information Finance (InfoFi)</strong> という新領域を提唱</li>
+      <li class="mb-4"><strong>トークンキュレーテッド・ナレッジグラフ</strong></li>
+      <li class="mb-4"><strong>$TRUST</strong> による<br/>インセンティブ設計</li>
+      <li><strong>Information Finance (InfoFi)</strong> を提唱</li>
     </ul>
   </div>
 </div>
@@ -414,23 +405,14 @@ section.divider h2 {
 <div class="grid grid-cols-2 items-center">
   <div>
     <p class="text-xl">
-      実世界のエンティティとその関係を<br/>
-      <strong>グラフ構造（ノードとエッジ）</strong>で<br/>
-      表現した知識表現の仕組み
+      実世界のエンティティとその関係を
+      <strong>グラフ構造（ノードとエッジ）</strong>で表現した知識表現の仕組み
     </p>
-    <div class="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-      <p class="text-sm text-muted">2012年にGoogleが検索改善のために導入し広く普及。RDF (Resource Description Framework) では主語-述語-目的語の三つ組で表現。</p>
-    </div>
   </div>
   <div class="card text-center">
-    <svg width="300" height="200" viewBox="0 0 300 200">
-      <circle cx="50" cy="100" r="30" fill="#1B4565" />
-      <text x="50" y="105" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Node</text>
-      <circle cx="250" cy="100" r="30" fill="#3E9BA4" />
-      <text x="250" y="105" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Node</text>
-      <line x1="80" y1="100" x2="220" y2="100" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
-      <text x="150" y="90" text-anchor="middle" fill="#475569" font-size="12" font-weight="bold">Edge (Relationship)</text>
-    </svg>
+    <div class="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+      <p class="text-sm text-muted">2012年にGoogleが検索改善の<br/>ために導入し広く普及。<br/><br/>RDFでは主語-述語-目的語の<br/>三つ組で表現。</p>
+    </div>
   </div>
 </div>
 
@@ -458,7 +440,7 @@ section.divider h2 {
       </tr>
       <tr>
         <td><strong>柔軟な検索</strong></td>
-        <td>RDB（SQL）では難しい「友達の友達」のようなグラフ横断クエリが高速</td>
+        <td>RDB（SQL）では難しい「友達の友達」のような<br/>グラフ横断クエリが高速</td>
       </tr>
     </tbody>
   </table>
@@ -481,18 +463,17 @@ section.divider h2 {
   <div class="card bg-gray-50">
     <h3 class="text-primary">定義</h3>
     <ul class="text-lg">
-      <li>あらゆるエンティティの一意な識別子 (DID)</li>
+      <li>あらゆるエンティティの<br/>一意な識別子 (DID)</li>
       <li>人、組織、契約、概念など何でも表現可能</li>
-      <li>誰でもパーミッションレスに作成可能</li>
+      <li>誰でも作成可能</li>
     </ul>
   </div>
   <div>
     <div class="p-6 border-l-4 border-secondary">
       <h4 class="m-0 text-secondary">レゴブロックのような構成要素</h4>
       <p class="text-muted mt-2">
-        Atomは知識を構築するための最小単位です。
-        ボンディングカーブと経済的インセンティブにより、
-        コミュニティは自然と正規化されたAtomに収束します。
+        Atomは知識を構築するための最小単位。<br/><br/>
+        ボンディングカーブと経済的インセンティブにより、自然と正規化されたAtomに収束するように設計。
       </p>
     </div>
   </div>
@@ -514,14 +495,6 @@ section.divider h2 {
     </div>
     <p class="text-sm text-center mt-2 text-muted">Triple自体も新たなAtomとして扱われます</p>
   </div>
-  <div class="card">
-    <h3>Examples</h3>
-    <ul class="text-sm font-mono bg-gray-50 p-4 rounded-lg">
-      <li class="mb-2">[Tiger Research] - [Founded In] - [2021]</li>
-      <li class="mb-2">[Alice] - [knows] - [Bob]</li>
-      <li>[Agent X] - [hasSkill] - ["translation"]</li>
-    </ul>
-  </div>
 </div>
 
 ---
@@ -531,8 +504,7 @@ section.divider h2 {
 <div class="grid grid-cols-2 items-center">
   <div>
     <p class="text-lg mb-4">
-      AtomやTripleに対して <strong>$TRUST</strong> トークンを<br/>
-      ステーキングすることで、情報の質を担保します。
+      AtomやTripleに対して <strong>$TRUST</strong> トークンをステーキングすることで、情報の質を担保します。
     </p>
     <div class="card bg-gray-50 border-0">
       <h4 class="text-sm text-muted uppercase">Token Curated Registry</h4>
@@ -586,11 +558,6 @@ section.divider h2 {
     </div>
     <div class="text-muted">↓</div>
     <div class="p-2 border border-dashed border-gray-300 rounded mt-2">Atom C (Object)</div>
-    
-    <div class="mt-4 pt-4 border-t border-gray-200">
-      <span class="text-accent font-bold">Signal ($TRUST)</span><br/>
-      Positive / Negative
-    </div>
   </div>
 </div>
 
@@ -601,7 +568,7 @@ section.divider h2 {
 
 <div class="tag">Section 04</div>
 
-## 期待されるユースケース
+## ユースケースとデモ
 
 ---
 
@@ -609,8 +576,8 @@ section.divider h2 {
 
 <div class="grid grid-cols-2 gap-8">
   <div class="card">
-    <h3 class="text-primary">🛡️ ウォレットの信頼性評価</h3>
-    <p class="text-sm text-muted mb-4">コントラクトやdAppの安全性をコミュニティがAttestation</p>
+    <h3 class="text-primary">🛡️信頼性評価</h3>
+    <p class="text-sm text-muted mb-4">コントラクトやdAppの安全性を<br/>コミュニティがAttestation</p>
     <ul class="text-sm">
       <li>フィッシングサイトの検出</li>
       <li>詐欺トークンの警告</li>
@@ -618,10 +585,10 @@ section.divider h2 {
     </ul>
   </div>
   <div class="card">
-    <h3 class="text-secondary">⭐ 分散型レピュテーション</h3>
-    <p class="text-sm text-muted mb-4">プラットフォームに依存しないポータブルな評判</p>
+    <h3 class="text-secondary">分散型レピュテーション</h3>
+    <p class="text-sm text-muted mb-4">プラットフォームに依存しない<br/>ポータブルな評判</p>
     <ul class="text-sm">
-      <li>DeFiプロトコル間の信用スコア共有</li>
+      <li>DeFiプロトコルの信用スコア共有</li>
       <li>DAO貢献度の可視化</li>
       <li>アンダーコラテラルローンの実現</li>
     </ul>
@@ -640,16 +607,16 @@ section.divider h2 {
       スキルや実績をTripleで記録します。
     </p>
     <div class="p-4 bg-gray-100 rounded-lg text-sm font-mono">
-      "Agent X" - "hasCompleted" - "Translation Task #123"<br/>
+      "Agent X" - "hasCompleted" - <br/>"Translation Task #123"<br/>
       <span class="text-green-600">Verified by 50 Signals</span>
     </div>
   </div>
   <div>
     <h3 class="mb-4">信頼できるコンテキスト</h3>
     <ul class="text-lg">
-      <li class="mb-2">中央集権的なディレクトリに依存しない</li>
-      <li class="mb-2">検証済みデータを共有ナレッジグラフから取得</li>
-      <li>エージェント間の自律的な連携を促進</li>
+      <li class="mb-2">中央集権的なディレクトリに<br/>依存しない</li>
+      <li class="mb-2">検証済みデータを共有ナレッジ<br/>グラフから取得</li>
+      <li>エージェント間の自律的な連携促進</li>
     </ul>
   </div>
 </div>
@@ -662,16 +629,16 @@ section.divider h2 {
   <div class="card bg-white">
     <h3>🎨 パーソナライズ</h3>
     <p>
-      ユーザーの好みや評価がポータブルなアイデンティティになります。<br/>
-      アプリを跨いで「自分の直感（Intuition）」を持ち運べる世界。
+      ユーザーの好みや評価がポータブルなアイデンティティになる。<br/><br/>
+      アプリを跨いで自分の直感（Intuition）を持ち運べる世界。
     </p>
   </div>
   <div class="card bg-white">
     <h3>💡 推薦の革新</h3>
     <p>
-      プラットフォームのアルゴリズムではなく、<br/>
-      <strong>信頼する人のSignal</strong>に基づくレコメンド。<br/>
-      推薦者自身も経済的報酬を受け取れます。
+      アルゴリズムではなく、
+      <strong>信頼する人のSignal</strong>に基づくレコメンド。<br/><br/>
+      推薦者自身も報酬を受け取れる。
     </p>
   </div>
 </div>
@@ -682,19 +649,11 @@ section.divider h2 {
 <!-- _class: invert bg-divider-2 -->
 
 <div class="lead">
-  <h2 class="text-4xl mb-8" style="border:none; text-shadow: 0 4px 8px rgba(0,0,0,0.3);">DEMO</h2>
+  <h2 class="text-4xl mb-8" style="border:none; text-shadow: 0 4px 8px rgba(0,0,0,0.3);">デモ</h2>
   
   <div class="card bg-white text-main p-10 text-center shadow-2xl" style="max-width: 700px;">
-    <p class="mb-4 text-2xl font-bold text-primary">Intuition Application Demo</p>
-    <p class="mb-8 text-muted text-lg">実際のアプリケーション動作をご覧ください</p>
-    
-    <a href="https://www.youtube.com/watch?v=ZRsy8zhcnck" style="display: inline-block; background-color: #FF0000; color: white; text-decoration: none; border-radius: 99px; padding: 1rem 3rem; font-weight: bold; font-size: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
-      ▶ Watch on YouTube
-    </a>
-    
-    <p class="mt-6 text-sm text-muted">
-      https://www.youtube.com/watch?v=ZRsy8zhcnck
-    </p>
+    <p class="mb-4 text-2xl font-bold text-primary">Intuition サンプルアプリ デモ by TRAE</p>
+    <p class="mb-8 text-muted text-lg">  <a href="https://www.youtube.com/watch?v=ZRsy8zhcnck">実際のアプリケーション動作(Youtube)</a></p>
   </div>
 </div>
 
@@ -707,16 +666,15 @@ section.divider h2 {
   <div>
     <h2 class="text-4xl border-none mb-8">Summary</h2>
     <p class="text-xl opacity-80">
-      Intuitionは、Web3, AI, Web2を横断する<br/>
-      <strong>「インターネットの信頼レイヤー」</strong>を構築します。
+      IntuitionはWeb3, AI, Web2を<br/>横断する「インターネットの<br/>信頼レイヤー」を構築します。
     </p>
   </div>
-  <div class="card-glass">
+  <div class="card">
     <ul class="text-lg">
-      <li class="mb-4"><strong>Atom</strong>: あらゆるエンティティのID</li>
-      <li class="mb-4"><strong>Triple</strong>: 構造化された知識のネットワーク</li>
-      <li class="mb-4"><strong>Signal</strong>: 信頼の経済的証明</li>
-      <li><strong>InfoFi</strong>: 情報の価値化と流動化</li>
+      <li class="mb-4"><strong>Atom: <br/>エンティティのID</li>
+      <li class="mb-4"><strong>Triple: <br/>構造化された知識の<br/>ネットワーク</li></strong>
+      <li class="mb-4"><strong>Signal: <br/>信頼の経済的証明</li></strong>
+      <li><strong>InfoFi: <br/>情報の価値化と流動化</li></strong>
     </ul>
   </div>
 </div>
