@@ -272,6 +272,33 @@ section.divider h2 {
 
 ---
 
+<!-- Self Introduction -->
+<div class="grid grid-cols-2 items-center h-full">
+  <div class="card items-center text-center">
+    <img src="https://pbs.twimg.com/profile_images/1845003681026146306/cf72Ilws_400x400.jpg" class="mx-auto mb-4" style="border-radius: 50%; width: 200px; height: 200px; object-fit: cover; border: 5px solid var(--secondary); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+    <h3 class="mb-2 text-2xl">Haruki Kondo</h3>
+    <p class="text-muted mb-6">Web3 Engineer / Researcher</p>
+    <a href="https://x.com/haruki_web3" class="text-secondary font-bold no-underline text-xl">
+      𝕏 @haruki_web3
+    </a>
+  </div>
+  <div class="p-8">
+    <h2 class="text-3xl mb-6 border-b-0">Speaker</h2>
+    <p class="text-xl leading-relaxed mb-8">
+      <strong>Intuition</strong> のエコシステムと<br/>
+      分散型ナレッジグラフの可能性について、<br/>
+      技術的な観点から解説します。
+    </p>
+    <div class="p-6 bg-white rounded-xl border-l-8 border-secondary shadow-sm">
+      <p class="text-muted italic text-lg">
+        "Building the Trust Layer for the Internet"
+      </p>
+    </div>
+  </div>
+</div>
+
+---
+
 <!-- Section Divider 1 -->
 <!-- _class: divider invert bg-divider-1 -->
 
@@ -645,6 +672,28 @@ section.divider h2 {
       プラットフォームのアルゴリズムではなく、<br/>
       <strong>信頼する人のSignal</strong>に基づくレコメンド。<br/>
       推薦者自身も経済的報酬を受け取れます。
+    </p>
+  </div>
+</div>
+
+---
+
+<!-- Demo -->
+<!-- _class: invert bg-divider-2 -->
+
+<div class="lead">
+  <h2 class="text-4xl mb-8" style="border:none; text-shadow: 0 4px 8px rgba(0,0,0,0.3);">DEMO</h2>
+  
+  <div class="card bg-white text-main p-10 text-center shadow-2xl" style="max-width: 700px;">
+    <p class="mb-4 text-2xl font-bold text-primary">Intuition Application Demo</p>
+    <p class="mb-8 text-muted text-lg">実際のアプリケーション動作をご覧ください</p>
+    
+    <a href="https://www.youtube.com/watch?v=ZRsy8zhcnck" style="display: inline-block; background-color: #FF0000; color: white; text-decoration: none; border-radius: 99px; padding: 1rem 3rem; font-weight: bold; font-size: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+      ▶ Watch on YouTube
+    </a>
+    
+    <p class="mt-6 text-sm text-muted">
+      https://www.youtube.com/watch?v=ZRsy8zhcnck
     </p>
   </div>
 </div>
