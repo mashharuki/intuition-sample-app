@@ -359,31 +359,34 @@ section.divider h2 {
 
 ## なぜIntuitionが必要か
 
-<div class="grid grid-cols-2 items-center">
-  <div>
-    <div class="card mb-4">
-      <h3>現状の課題</h3>
-      <ul class="text-sm">
-        <li>Web情報は断片的で出所不明</li>
-        <li>中央集権的なプラットフォームによる管理</li>
-        <li>「いいね」や「レビュー」は持ち運べない</li>
-      </ul>
-    </div>
-    <div class="text-center text-2xl text-muted">⬇︎</div>
-    <div class="card mt-4 border-l-4 border-l-secondary">
-      <h3>Intuitionの解決策</h3>
-      <ul class="text-sm">
-        <li>情報を<strong>検証可能</strong>に</li>
-        <li>データを<strong>所有可能</strong>に</li>
-        <li>信頼に<strong>経済的価値</strong>を付与</li>
-      </ul>
-    </div>
+<div class="grid grid-cols-2 gap-8 items-stretch mb-8">
+  <div class="card">
+    <h3 class="text-red-800" style="font-size: 1.1em; border-bottom: 2px solid #991b1b; padding-bottom: 0.5rem; margin-bottom: 1rem;">現状の課題</h3>
+    <ul class="text-sm">
+      <li>Web情報は断片的で出所不明</li>
+      <li>中央集権的な管理</li>
+      <li>「評価」を持ち運べない</li>
+    </ul>
   </div>
-  <div class="p-8 text-center">
-    <p class="text-xl font-bold text-primary">AIエージェント時代の<br/>信頼基盤</p>
-    <p class="text-muted mt-4">
-      AIが生成する大量の情報の中で、<br/>
-      「何を信じるか」を判断するための<br/>
+  <div class="card border-l-4 border-l-secondary">
+    <h3 class="text-secondary" style="font-size: 1.1em; border-bottom: 2px solid var(--secondary); padding-bottom: 0.5rem; margin-bottom: 1rem;">Intuitionの解決策</h3>
+    <ul class="text-sm">
+      <li>情報を<strong>検証可能</strong>に</li>
+      <li>データを<strong>所有可能</strong>に</li>
+      <li>信頼に<strong>経済的価値</strong>を付与</li>
+    </ul>
+  </div>
+</div>
+
+---
+
+## なぜIntuitionが必要か
+
+<div class="text-center">
+  <div class="p-6 bg-white rounded-xl shadow-lg border border-gray-200 inline-block">
+    <h3 >AIエージェント時代の信頼基盤</h3>
+    <p class="text-muted text-lg">
+      AIが生成する大量の情報の中で、「何を信じるか」を判断するための<br/>
       分散型インフラが不可欠になる
     </p>
   </div>
