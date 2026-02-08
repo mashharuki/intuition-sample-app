@@ -25,7 +25,7 @@ import {
   usePublicClient,
   useWalletClient,
 } from 'wagmi'
-import './App.css'
+import './css/App.css'
 
 type AtomDetails = Awaited<ReturnType<typeof getAtomDetails>>
 type GlobalSearchResult = Awaited<ReturnType<typeof globalSearch>>
@@ -47,7 +47,7 @@ const SEARCH_STALE_TIME_MS = 1000 * 60
 const ATOM_STALE_TIME_MS = 1000 * 60 * 5
 const ATOMS_LIMIT_COUNT = 10
 const DEFAULT_DEPOSIT_ETH = '0.01'
-const EXPLORER_BASE_URL = 'https://explorer.intuition.systems'
+const EXPLORER_BASE_URL = 'https://explorer.intuition-testnet.systems'
 const SUBJECT_TRIPLES_LIMIT_OPTIONS = [10, 20, 50] as const
 const SUBJECT_TRIPLES_DEFAULT_LIMIT_COUNT = 20
 const TAB_ITEMS = [
@@ -306,7 +306,6 @@ function App(): ReactElement {
     useConnect()
   const { disconnect } = useDisconnect()
   const publicClient = usePublicClient({ chainId })
-  const { data: walletClient } = useWalletClient({ chainId })
   const queryClient = useQueryClient()
   const defaultConnector = useMemo(() => connectors[0], [connectors])
   const multiVaultAddress = useMemo((): HexAddress | undefined => {
@@ -317,9 +316,12 @@ function App(): ReactElement {
     }
   }, [chainId])
   const isChainSupported = Boolean(multiVaultAddress)
-  const isPublicClientReady = Boolean(publicClient)
+  const { data: walletClient } = useWalletClient({
+    chainId,
+    query: { enabled: isConnected && isChainSupported },
+  })
+  const isWalletConnected = isConnected
   const isWalletClientReady = Boolean(walletClient)
-  const isWalletReady = isConnected && isPublicClientReady && isWalletClientReady
 
   const isSearchEnabled = searchQuery.length >= SEARCH_MIN_LENGTH_COUNT
 
@@ -374,6 +376,11 @@ function App(): ReactElement {
         if (!isConnected) {
           throw new Error('Walletが接続されていません')
         }
+        if (!isChainSupported) {
+          throw new Error(
+            'このチェーンは未対応です。Intuition Mainnet / Testnetへ切り替えてください',
+          )
+        }
         if (!walletClient) {
           throw new Error('Walletクライアントを取得できません')
         }
@@ -419,6 +426,11 @@ function App(): ReactElement {
       }): Promise<CreateTripleResult> => {
         if (!isConnected) {
           throw new Error('Walletが接続されていません')
+        }
+        if (!isChainSupported) {
+          throw new Error(
+            'このチェーンは未対応です。Intuition Mainnet / Testnetへ切り替えてください',
+          )
         }
         if (!walletClient) {
           throw new Error('Walletクライアントを取得できません')
@@ -607,13 +619,15 @@ function App(): ReactElement {
   }
 
   const isCreateAtomDisabled =
-    !isWalletReady ||
+    !isWalletConnected ||
     !isChainSupported ||
+    !isWalletClientReady ||
     newAtomData.trim().length === 0 ||
     createAtom.isPending
   const isCreateTripleDisabled =
-    !isWalletReady ||
+    !isWalletConnected ||
     !isChainSupported ||
+    !isWalletClientReady ||
     tripleSubjectId.trim().length === 0 ||
     triplePredicateId.trim().length === 0 ||
     tripleObjectId.trim().length === 0 ||
@@ -799,6 +813,12 @@ function App(): ReactElement {
       <div className="messages">
         {statusMessage && <div className="message success">{statusMessage}</div>}
         {errorMessage && <div className="message error">{errorMessage}</div>}
+        {isWalletConnected && !isWalletClientReady && (
+          <div className="message error">
+            Walletが接続済みですが、署名に必要なクライアントを取得できません。
+            接続解除してから再接続してください。
+          </div>
+        )}
         {lastTransactionHash && (
           <div className="message info">
             {lastTransactionLabel} Tx:{' '}
