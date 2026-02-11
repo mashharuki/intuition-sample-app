@@ -1,12 +1,4 @@
 import {
-  fetcher,
-  GetTriplesDocument,
-  type GetTriplesQuery,
-  type GetTriplesQueryVariables,
-  type Order_By,
-  type Triples_Order_By,
-} from '@0xintuition/graphql'
-import {
   createAtomFromString,
   createTripleStatement,
   getAtomDetails,
@@ -26,237 +18,45 @@ import {
   useWalletClient,
 } from 'wagmi'
 import './css/App.css'
+import {
+  ATOM_STALE_TIME_MS,
+  ATOMS_LIMIT_COUNT,
+  DEFAULT_DEPOSIT_ETH,
+  SEARCH_MIN_LENGTH_COUNT,
+  SEARCH_STALE_TIME_MS,
+  SUBJECT_TRIPLES_DEFAULT_LIMIT_COUNT,
+} from './utils/constants'
+import {
+  getDefaultSortKey,
+  getNodeLabel,
+  getSubjectTriplesOrderBy,
+  getTriplesBySubject,
+} from './utils/helper'
+import type {
+  AtomDetails,
+  CreateAtomResult,
+  CreateTripleResult,
+  GlobalSearchResult,
+  HexAddress,
+  SortKey,
+  SortOrder,
+  SubjectSortKey,
+  TabKey,
+  TripleDetails,
+  TripleKind,
+  TriplesBySubjectResult,
+} from './utils/types'
 
-type AtomDetails = Awaited<ReturnType<typeof getAtomDetails>>
-type GlobalSearchResult = Awaited<ReturnType<typeof globalSearch>>
-type CreateAtomResult = Awaited<ReturnType<typeof createAtomFromString>>
-type CreateTripleResult = Awaited<ReturnType<typeof createTripleStatement>>
-type HexAddress = `0x${string}`
-type SubjectTriple = NonNullable<AtomDetails>['as_subject_triples'][number]
-type PredicateTriple = NonNullable<AtomDetails>['as_predicate_triples'][number]
-type ObjectTriple = NonNullable<AtomDetails>['as_object_triples'][number]
-type TripleDetails = Awaited<ReturnType<typeof getTripleDetails>>
-type SubjectTriplesQueryTriple = GetTriplesQuery['triples'][number]
-type TriplesBySubjectResult = {
-  totalCount: number
-  triples: SubjectTriplesQueryTriple[]
-}
-
-const SEARCH_MIN_LENGTH_COUNT = 3
-const SEARCH_STALE_TIME_MS = 1000 * 60
-const ATOM_STALE_TIME_MS = 1000 * 60 * 5
-const ATOMS_LIMIT_COUNT = 10
-const DEFAULT_DEPOSIT_ETH = '0.01'
-const EXPLORER_BASE_URL = 'https://intuition-testnet.explorer.caldera.xyz'
-const SUBJECT_TRIPLES_LIMIT_OPTIONS = [10, 20, 50] as const
-const SUBJECT_TRIPLES_DEFAULT_LIMIT_COUNT = 20
-const TAB_ITEMS = [
-  { key: 'explore', label: '検索・詳細' },
-  { key: 'atom', label: 'Atom作成' },
-  { key: 'triple-create', label: 'Triple作成' },
-  { key: 'triple-fetch', label: 'Triple取得' },
-  { key: 'triple-subject', label: 'Subject Triple一覧' },
-] as const
-const MAX_TRIPLE_PREVIEW_COUNT = 3
-const MAX_NODE_LABEL_LENGTH_COUNT = 36
-const SUPPORTED_CHAIN_LABELS: Record<number, string> = {
-  1155: 'Intuition Mainnet (1155)',
-  13579: 'Intuition Testnet (13579)',
-}
-const OPTIONAL_CHAIN_LABELS: Record<number, string> = {
-  84532: 'Base Sepolia (84532)',
-}
-
-function getChainLabel(chainId: number): string {
-  return (
-    SUPPORTED_CHAIN_LABELS[chainId] ??
-    OPTIONAL_CHAIN_LABELS[chainId] ??
-    `Unknown (${chainId})`
-  )
-}
-
-function getTransactionUrl(hash: string): string {
-  return `${EXPLORER_BASE_URL}/tx/${hash}`
-}
-
-type TabKey = (typeof TAB_ITEMS)[number]['key']
-type AtomValueInfo = {
-  typeLabel: string
-  name?: string
-  description?: string
-  url?: string
-  image?: string
-}
-type TripleKind = 'subject' | 'predicate' | 'object'
-type TripleNodeKey = 'subject' | 'predicate' | 'object'
-type SortOrder = 'asc' | 'desc'
-type SortKey = 'subject' | 'predicate' | 'object' | 'term'
-type SubjectSortKey = 'predicate' | 'object' | 'term'
-type ModalTriple =
-  | SubjectTriple
-  | PredicateTriple
-  | ObjectTriple
-type TripleDisplay = {
-  subjectLabel: string
-  predicateLabel: string
-  objectLabel: string
-}
-
-function getDisplayText(value: string, maxLengthCount: number): string {
-  if (value.length <= maxLengthCount) {
-    return value
-  }
-  return `${value.slice(0, Math.max(maxLengthCount - 1, 0))}…`
-}
-
-function formatDateLabel(value: unknown): string {
-  if (!value) {
-    return '-'
-  }
-  const date = new Date(String(value))
-  if (Number.isNaN(date.getTime())) {
-    return String(value)
-  }
-  return date.toLocaleString('ja-JP')
-}
-
-function getNodeLabel(
-  node?: {
-    label?: string | null
-    data?: string | null
-    term_id?: string
-    emoji?: string | null
-  } | null | undefined,
-): string {
-  if (!node) {
-    return '-'
-  }
-  const base =
-    node.label ??
-    node.data ??
-    node.term_id ??
-    '-'
-  const label = node.emoji ? `${node.emoji} ${base}` : base
-  return getDisplayText(label, MAX_NODE_LABEL_LENGTH_COUNT)
-}
-
-function getAtomValueInfo(
-  atom: AtomDetails | null | undefined,
-): AtomValueInfo | null {
-  if (!atom?.value) {
-    return null
-  }
-  if (atom.value.person) {
-    return {
-      typeLabel: '人物',
-      name: atom.value.person.name ?? undefined,
-      description: atom.value.person.description ?? undefined,
-      url: atom.value.person.url ?? undefined,
-      image: atom.value.person.image ?? undefined,
-    }
-  }
-  if (atom.value.organization) {
-    return {
-      typeLabel: '組織',
-      name: atom.value.organization.name ?? undefined,
-      description: atom.value.organization.description ?? undefined,
-      url: atom.value.organization.url ?? undefined,
-      image: atom.value.organization.image ?? undefined,
-    }
-  }
-  if (atom.value.thing) {
-    return {
-      typeLabel: 'モノ',
-      name: atom.value.thing.name ?? undefined,
-      description: atom.value.thing.description ?? undefined,
-      url: atom.value.thing.url ?? undefined,
-      image: atom.value.thing.image ?? undefined,
-    }
-  }
-  if (atom.value.account) {
-    return {
-      typeLabel: 'アカウント',
-      name: atom.value.account.label ?? undefined,
-      image: atom.value.account.image ?? undefined,
-    }
-  }
-  return null
-}
-
-function getAtomPrimaryLabel(atom: AtomDetails | null | undefined): string {
-  if (!atom) {
-    return '-'
-  }
-  const valueInfo = getAtomValueInfo(atom)
-  return (
-    atom.label ??
-    valueInfo?.name ??
-    atom.data ??
-    atom.term_id
-  )
-}
-
-function getAtomSecondaryLabel(atom: AtomDetails | null | undefined): string {
-  if (!atom) {
-    return ''
-  }
-  if (atom.label && atom.data) {
-    return getDisplayText(atom.data, MAX_NODE_LABEL_LENGTH_COUNT)
-  }
-  if (atom.label && atom.term_id) {
-    return atom.term_id
-  }
-  if (atom.data && atom.term_id) {
-    return atom.term_id
-  }
-  return ''
-}
-
-function getDefaultSortKey(kind: TripleKind): SortKey {
-  if (kind === 'predicate') {
-    return 'subject'
-  }
-  return 'predicate'
-}
-
-function getSubjectTriplesOrderBy(
-  key: SubjectSortKey,
-  order: SortOrder,
-): Triples_Order_By[] {
-  const orderBy = order as Order_By
-  if (key === 'predicate') {
-    return [{ predicate: { label: orderBy } }]
-  }
-  if (key === 'object') {
-    return [{ object: { label: orderBy } }]
-  }
-  return [{ term_id: orderBy }]
-}
-
-async function getTriplesBySubject(
-  subjectId: string,
-  limitCount: number,
-  offsetCount: number,
-  orderBy: Triples_Order_By[],
-): Promise<TriplesBySubjectResult> {
-  const data = await fetcher<
-    GetTriplesQuery,
-    GetTriplesQueryVariables
-  >(GetTriplesDocument, {
-    limit: limitCount,
-    offset: offsetCount,
-    orderBy,
-    where: {
-      subject_id: {
-        _eq: subjectId,
-      },
-    },
-  })()
-  return {
-    totalCount: data.total.aggregate?.count ?? 0,
-    triples: data.triples,
-  }
-}
+// コンポーネントのインポート
+import { AtomCreatePanel } from './components/AtomCreatePanel'
+import { AtomDetailPanel } from './components/AtomDetailPanel'
+import { AtomSearchPanel } from './components/AtomSearchPanel'
+import { Header } from './components/Header'
+import { StatusMessage } from './components/StatusMessage'
+import { SubjectTriplesPanel } from './components/SubjectTriplesPanel'
+import { TabNavigation } from './components/TabNavigation'
+import { TripleCreatePanel } from './components/TripleCreatePanel'
+import { TripleFetchPanel } from './components/TripleFetchPanel'
 
 /**
  * App コンポーネント
@@ -632,34 +432,7 @@ function App(): ReactElement {
     triplePredicateId.trim().length === 0 ||
     tripleObjectId.trim().length === 0 ||
     createTriple.isPending
-  const atomData = atomDetails.data ?? null
-  const atomPrimaryLabel = getAtomPrimaryLabel(atomData)
-  const atomSecondaryLabel = getAtomSecondaryLabel(atomData)
-  const atomValueInfo = getAtomValueInfo(atomData)
-  const subjectTriples = atomData?.as_subject_triples ?? []
-  const predicateTriples = atomData?.as_predicate_triples ?? []
-  const objectTriples = atomData?.as_object_triples ?? []
-  const subjectPreview = subjectTriples.slice(0, MAX_TRIPLE_PREVIEW_COUNT)
-  const predicatePreview = predicateTriples.slice(0, MAX_TRIPLE_PREVIEW_COUNT)
-  const objectPreview = objectTriples.slice(0, MAX_TRIPLE_PREVIEW_COUNT)
-  const subjectMoreCount = Math.max(
-    subjectTriples.length - subjectPreview.length,
-    0,
-  )
-  const predicateMoreCount = Math.max(
-    predicateTriples.length - predicatePreview.length,
-    0,
-  )
-  const objectMoreCount = Math.max(
-    objectTriples.length - objectPreview.length,
-    0,
-  )
-  const modalTriples =
-    tripleModalKind === 'subject'
-      ? subjectTriples
-      : tripleModalKind === 'predicate'
-        ? predicateTriples
-        : objectTriples
+
   const subjectTriplesItems = useMemo(
     () => subjectTriplesQuery.data?.triples ?? [],
     [subjectTriplesQuery.data],
@@ -687,889 +460,117 @@ function App(): ReactElement {
     ),
     1,
   )
-  const modalTitle =
-    tripleModalKind === 'subject'
-      ? '主語としての関連'
-      : tripleModalKind === 'predicate'
-        ? '述語としての関連'
-        : '目的語としての関連'
-  const getTripleNodeLabel = (
-    triple: ModalTriple,
-    nodeKey: TripleNodeKey,
-  ): string => {
-    if (nodeKey === 'subject' && 'subject' in triple) {
-      return getNodeLabel(triple.subject)
-    }
-    if (nodeKey === 'predicate' && 'predicate' in triple) {
-      return getNodeLabel(triple.predicate)
-    }
-    if (nodeKey === 'object' && 'object' in triple) {
-      return getNodeLabel(triple.object)
-    }
-    return ''
-  }
-  const getTripleDisplay = (
-    triple: ModalTriple,
-    kind: TripleKind,
-    atom: AtomDetails | null,
-  ): TripleDisplay => {
-    const atomLabel = getNodeLabel(atom)
-    if (kind === 'subject') {
-      return {
-        subjectLabel: atomLabel,
-        predicateLabel: getTripleNodeLabel(triple, 'predicate'),
-        objectLabel: getTripleNodeLabel(triple, 'object'),
-      }
-    }
-    if (kind === 'predicate') {
-      return {
-        subjectLabel: getTripleNodeLabel(triple, 'subject'),
-        predicateLabel: atomLabel,
-        objectLabel: getTripleNodeLabel(triple, 'object'),
-      }
-    }
-    return {
-      subjectLabel: getTripleNodeLabel(triple, 'subject'),
-      predicateLabel: getTripleNodeLabel(triple, 'predicate'),
-      objectLabel: atomLabel,
-    }
-  }
-  const tripleIncludesQuery = (triple: ModalTriple, query: string): boolean => {
-    const text = [
-      getTripleNodeLabel(triple, 'subject'),
-      getTripleNodeLabel(triple, 'predicate'),
-      getTripleNodeLabel(triple, 'object'),
-      triple.term_id,
-    ]
-      .join(' ')
-      .toLowerCase()
-    return text.includes(query.toLowerCase())
-  }
-  const getTripleSortValue = (
-    triple: ModalTriple,
-    key: SortKey,
-  ): string => {
-    if (key === 'term') {
-      return triple.term_id
-    }
-    if (key === 'subject') {
-      return getTripleNodeLabel(triple, 'subject')
-    }
-    if (key === 'predicate') {
-      return getTripleNodeLabel(triple, 'predicate')
-    }
-    return getTripleNodeLabel(triple, 'object')
-  }
-  const filteredTriples = modalTriples.filter((t) =>
-    tripleFilterQuery.trim().length === 0
-      ? true
-      : tripleIncludesQuery(t, tripleFilterQuery),
-  )
-  const sortedTriples = filteredTriples.slice().sort((a, b) => {
-    const av = getTripleSortValue(a, tripleSortKey)
-    const bv = getTripleSortValue(b, tripleSortKey)
-    const cmp = av.localeCompare(bv)
-    return tripleSortOrder === 'asc' ? cmp : -cmp
-  })
 
   return (
     <div className="app">
-      <header className="header">
-        <div>
-          <div className="title">Intuition Atom Explorer</div>
-          <div className="subtitle">React + TanStack Query + Wagmi</div>
-        </div>
-        <div className="wallet">
-          <div className="wallet-info">
-            <span>Chain: {getChainLabel(chainId)}</span>
-            <span>Account: {address ?? '-'}</span>
-          </div>
-          <div className="wallet-actions">
-            {!isConnected ? (
-              <button
-                type="button"
-                className="button primary"
-                onClick={handleConnectWallet}
-                disabled={!defaultConnector || isConnecting}
-              >
-                {isConnecting ? '接続中...' : 'Wallet接続'}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="button"
-                onClick={handleDisconnectWallet}
-              >
-                接続解除
-              </button>
-            )}
-          </div>
-          {connectError && (
-            <div className="message error">{connectError.message}</div>
-          )}
-        </div>
-      </header>
+      <Header
+        chainId={chainId}
+        address={address}
+        isConnected={isConnected}
+        isConnecting={isConnecting}
+        connectError={connectError}
+        onConnect={handleConnectWallet}
+        onDisconnect={handleDisconnectWallet}
+      />
 
-      <div className="messages">
-        {statusMessage && <div className="message success">{statusMessage}</div>}
-        {errorMessage && <div className="message error">{errorMessage}</div>}
-        {isWalletConnected && !isWalletClientReady && (
-          <div className="message error">
-            Walletが接続済みですが、署名に必要なクライアントを取得できません。
-            接続解除してから再接続してください。
-          </div>
-        )}
-        {lastTransactionHash && (
-          <div className="message info">
-            {lastTransactionLabel} Tx:{' '}
-            <a
-              href={getTransactionUrl(lastTransactionHash)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {lastTransactionHash}
-            </a>
-          </div>
-        )}
-        {!isChainSupported && (
-          <div className="message error">
-            対応チェーン: {Object.values(SUPPORTED_CHAIN_LABELS).join(', ')}
-          </div>
-        )}
-      </div>
+      <StatusMessage
+        statusMessage={statusMessage}
+        errorMessage={errorMessage}
+        lastTransactionHash={lastTransactionHash}
+        lastTransactionLabel={lastTransactionLabel}
+        isWalletConnected={isWalletConnected}
+        isWalletClientReady={isWalletClientReady}
+        isChainSupported={isChainSupported}
+      />
 
-      <div className="tabs">
-        {TAB_ITEMS.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            className={`tab ${activeTab === tab.key ? 'active' : ''}`}
-            onClick={() => handleSelectTab(tab.key)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabNavigation activeTab={activeTab} onSelectTab={handleSelectTab} />
 
       {activeTab === 'explore' && (
         <div className="grid">
-          <section className="panel">
-            <h2>検索</h2>
-            <input
-              className="input"
-              type="text"
-              placeholder="3文字以上で検索"
-              value={searchQuery}
-              onChange={(event) => handleUpdateSearchQuery(event.target.value)}
-            />
-            <div className="muted">
-              {isSearchEnabled
-                ? '検索結果を更新中'
-                : '検索条件を入力してください'}
-            </div>
-            {searchResults.isLoading && <div>検索中...</div>}
-            {searchResults.data?.atoms?.length ? (
-              <div className="list">
-                {searchResults.data.atoms.map((atom) => {
-                  const atomId = atom.term_id
-                  return (
-                  <button
-                    key={atomId}
-                    type="button"
-                    className={`list-item ${
-                      atomId === selectedAtomId ? 'active' : ''
-                    }`}
-                    onClick={() => handleSelectAtom(atomId)}
-                  >
-                    <div className="list-title">{atom.label ?? atomId}</div>
-                    <div className="list-subtitle">{atomId}</div>
-                  </button>
-                  )
-                })}
-              </div>
-            ) : (
-              isSearchEnabled && !searchResults.isLoading && <div>結果なし</div>
-            )}
-          </section>
+          <AtomSearchPanel
+            searchQuery={searchQuery}
+            onUpdateSearchQuery={handleUpdateSearchQuery}
+            isSearchEnabled={isSearchEnabled}
+            searchResults={searchResults}
+            selectedAtomId={selectedAtomId}
+            onSelectAtom={handleSelectAtom}
+          />
 
-          <section className="panel">
-            <h2>Atom 詳細</h2>
-            {selectedAtomId ? (
-              <>
-                <div className="muted">選択中: {selectedAtomId}</div>
-                {atomDetails.isLoading && <div>取得中...</div>}
-                {atomData && (
-                  <div className="atom-detail">
-                    <div className="atom-hero">
-                      <div className="atom-identity">
-                        <div className="atom-title">{atomPrimaryLabel}</div>
-                        {atomSecondaryLabel && (
-                          <div className="atom-subtitle">
-                            {atomSecondaryLabel}
-                          </div>
-                        )}
-                        <div className="atom-meta">
-                          {atomData.emoji && (
-                            <span className="atom-chip">{atomData.emoji}</span>
-                          )}
-                          <span className="atom-chip">
-                            Type: {String(atomData.type ?? '-')}
-                          </span>
-                          <span className="atom-chip">
-                            Created: {formatDateLabel(atomData.created_at)}
-                          </span>
-                          <span className="atom-chip">
-                            Creator:{' '}
-                            {atomData.creator?.label ?? atomData.creator_id}
-                          </span>
-                        </div>
-                      </div>
-                      {atomData.image && (
-                        <div className="atom-image">
-                          <img src={atomData.image} alt={atomPrimaryLabel} />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="atom-info-grid">
-                      <div className="atom-info">
-                        <div className="atom-info-label">Atom ID</div>
-                        <div className="atom-info-value">{atomData.term_id}</div>
-                      </div>
-                      <div className="atom-info">
-                        <div className="atom-info-label">Tx</div>
-                        <a
-                          className="atom-info-link"
-                          href={getTransactionUrl(atomData.transaction_hash)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {atomData.transaction_hash}
-                        </a>
-                      </div>
-                      <div className="atom-info">
-                        <div className="atom-info-label">Wallet</div>
-                        <div className="atom-info-value">
-                          {atomData.wallet_id}
-                        </div>
-                      </div>
-                    </div>
-
-                    {atomValueInfo && (
-                      <div className="atom-value">
-                        <div className="atom-section-title">
-                          Value: {atomValueInfo.typeLabel}
-                        </div>
-                        <div className="atom-value-body">
-                          {atomValueInfo.image && (
-                            <div className="atom-value-image">
-                              <img
-                                src={atomValueInfo.image}
-                                alt={atomValueInfo.name ?? atomPrimaryLabel}
-                              />
-                            </div>
-                          )}
-                          <div className="atom-value-text">
-                            {atomValueInfo.name && (
-                              <div className="atom-value-title">
-                                {atomValueInfo.name}
-                              </div>
-                            )}
-                            {atomValueInfo.description && (
-                              <div className="atom-value-description">
-                                {atomValueInfo.description}
-                              </div>
-                            )}
-                            {atomValueInfo.url && (
-                              <a
-                                className="atom-value-link"
-                                href={atomValueInfo.url}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                {atomValueInfo.url}
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="atom-graph">
-                      <div className="atom-section-title">
-                        Knowledge Graph
-                      </div>
-                      <div className="graph-summary">
-                        <div className="graph-card">
-                          <div className="graph-count">
-                            {subjectTriples.length}
-                          </div>
-                          <div className="graph-label">Subject</div>
-                        </div>
-                        <div className="graph-card highlight">
-                          <div className="graph-count">
-                            {predicateTriples.length}
-                          </div>
-                          <div className="graph-label">Predicate</div>
-                        </div>
-                        <div className="graph-card">
-                          <div className="graph-count">
-                            {objectTriples.length}
-                          </div>
-                          <div className="graph-label">Object</div>
-                        </div>
-                      </div>
-
-                      <div className="triple-columns">
-                        <div className="triple-column">
-                          <div className="triple-label">主語として</div>
-                          {subjectPreview.length === 0 && (
-                            <div className="muted">まだ関連がありません</div>
-                          )}
-                          {subjectPreview.map((triple) => (
-                            <div
-                              key={triple.term_id}
-                              className="triple-item"
-                            >
-                              <span className="triple-node strong">
-                                {getNodeLabel(atomData ?? null)}
-                              </span>
-                              <span className="triple-arrow">—</span>
-                              <span className="triple-predicate">
-                                {getNodeLabel(triple.predicate)}
-                              </span>
-                              <span className="triple-arrow">→</span>
-                              <span className="triple-node">
-                                {getNodeLabel(triple.object)}
-                              </span>
-                            </div>
-                          ))}
-                          {subjectMoreCount > 0 && (
-                            <div className="muted">他 {subjectMoreCount} 件</div>
-                          )}
-                          {subjectTriples.length > 0 && (
-                            <button
-                              type="button"
-                              className="text-button"
-                              onClick={() => handleOpenTripleModal('subject')}
-                            >
-                              全件表示
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="triple-column">
-                          <div className="triple-label">述語として</div>
-                          {predicatePreview.length === 0 && (
-                            <div className="muted">まだ関連がありません</div>
-                          )}
-                          {predicatePreview.map((triple) => (
-                            <div
-                              key={triple.term_id}
-                              className="triple-item"
-                            >
-                              <span className="triple-node">
-                                {getNodeLabel(triple.subject)}
-                              </span>
-                              <span className="triple-arrow">—</span>
-                              <span className="triple-predicate strong">
-                                {getNodeLabel(atomData ?? null)}
-                              </span>
-                              <span className="triple-arrow">→</span>
-                              <span className="triple-node">
-                                {getNodeLabel(triple.object)}
-                              </span>
-                            </div>
-                          ))}
-                          {predicateMoreCount > 0 && (
-                            <div className="muted">他 {predicateMoreCount} 件</div>
-                          )}
-                          {predicateTriples.length > 0 && (
-                            <button
-                              type="button"
-                              className="text-button"
-                              onClick={() => handleOpenTripleModal('predicate')}
-                            >
-                              全件表示
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="triple-column">
-                          <div className="triple-label">目的語として</div>
-                          {objectPreview.length === 0 && (
-                            <div className="muted">まだ関連がありません</div>
-                          )}
-                          {objectPreview.map((triple) => (
-                            <div
-                              key={triple.term_id}
-                              className="triple-item"
-                            >
-                              <span className="triple-node">
-                                {getNodeLabel(triple.subject)}
-                              </span>
-                              <span className="triple-arrow">—</span>
-                              <span className="triple-predicate">
-                                {getNodeLabel(triple.predicate)}
-                              </span>
-                              <span className="triple-arrow">→</span>
-                              <span className="triple-node strong">
-                                {getNodeLabel(atomData ?? null)}
-                              </span>
-                            </div>
-                          ))}
-                          {objectMoreCount > 0 && (
-                            <div className="muted">他 {objectMoreCount} 件</div>
-                          )}
-                          {objectTriples.length > 0 && (
-                            <button
-                              type="button"
-                              className="text-button"
-                              onClick={() => handleOpenTripleModal('object')}
-                            >
-                              全件表示
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="muted">Atomを選択してください</div>
-            )}
-            {isTripleModalOpen && atomData && (
-              <div className="modal-backdrop" onClick={handleCloseTripleModal}>
-                <div
-                  className="modal"
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label={modalTitle}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <div className="modal-header">
-                    <div>
-                      <div className="modal-title">{modalTitle}</div>
-                      <div className="modal-subtitle">
-                        {sortedTriples.length} 件
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="modal-close"
-                      onClick={handleCloseTripleModal}
-                    >
-                      閉じる
-                    </button>
-                  </div>
-                  <div className="modal-controls">
-                    <input
-                      className="input"
-                      type="text"
-                      placeholder="フィルタ（subject/predicate/object/ID）"
-                      value={tripleFilterQuery}
-                      onChange={(e) =>
-                        handleUpdateTripleFilterQuery(e.target.value)
-                      }
-                    />
-                    <div className="controls-row">
-                      <select
-                        className="select"
-                        value={tripleSortKey}
-                        onChange={(e) =>
-                          handleUpdateTripleSortKey(e.target.value as SortKey)
-                        }
-                      >
-                        {tripleModalKind !== 'subject' && (
-                          <option value="subject">subject</option>
-                        )}
-                        {tripleModalKind !== 'predicate' && (
-                          <option value="predicate">predicate</option>
-                        )}
-                        {tripleModalKind !== 'object' && (
-                          <option value="object">object</option>
-                        )}
-                        <option value="term">term</option>
-                      </select>
-                      <button
-                        type="button"
-                        className="button"
-                        onClick={handleToggleTripleSortOrder}
-                      >
-                        {tripleSortOrder === 'asc' ? '昇順' : '降順'}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="modal-body">
-                    {modalTriples.length === 0 && (
-                      <div className="muted">まだ関連がありません</div>
-                    )}
-                    {sortedTriples.map((triple) => {
-                      const display = getTripleDisplay(
-                        triple,
-                        tripleModalKind,
-                        atomData,
-                      )
-                      return (
-                        <div key={triple.term_id} className="modal-item">
-                          <div className="triple-item">
-                            <span
-                              className={`triple-node ${
-                                tripleModalKind === 'subject' ? 'strong' : ''
-                              }`}
-                            >
-                              {display.subjectLabel}
-                            </span>
-                            <span className="triple-arrow">—</span>
-                            <span
-                              className={`triple-predicate ${
-                                tripleModalKind === 'predicate' ? 'strong' : ''
-                              }`}
-                            >
-                              {display.predicateLabel}
-                            </span>
-                            <span className="triple-arrow">→</span>
-                            <span
-                              className={`triple-node ${
-                                tripleModalKind === 'object' ? 'strong' : ''
-                              }`}
-                            >
-                              {display.objectLabel}
-                            </span>
-                          </div>
-                          <div className="modal-meta">
-                            Triple ID: {triple.term_id}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
+          <AtomDetailPanel
+            selectedAtomId={selectedAtomId}
+            atomDetails={atomDetails}
+            isTripleModalOpen={isTripleModalOpen}
+            tripleModalKind={tripleModalKind}
+            tripleFilterQuery={tripleFilterQuery}
+            tripleSortKey={tripleSortKey}
+            tripleSortOrder={tripleSortOrder}
+            onOpenTripleModal={handleOpenTripleModal}
+            onCloseTripleModal={handleCloseTripleModal}
+            onUpdateTripleFilterQuery={handleUpdateTripleFilterQuery}
+            onUpdateTripleSortKey={handleUpdateTripleSortKey}
+            onToggleTripleSortOrder={handleToggleTripleSortOrder}
+          />
         </div>
       )}
 
       {activeTab === 'atom' && (
-        <div className="grid">
-          <section className="panel">
-            <h2>Atom 作成</h2>
-            <input
-              className="input"
-              type="text"
-              placeholder="Atomデータ"
-              value={newAtomData}
-              onChange={(event) => handleUpdateNewAtomData(event.target.value)}
-            />
-            <input
-              className="input"
-              type="text"
-              placeholder="Deposit (ETH)"
-              value={atomDepositEth}
-              onChange={(event) => handleUpdateAtomDeposit(event.target.value)}
-            />
-            <button
-              type="button"
-              className="button primary"
-              onClick={handleCreateAtom}
-              disabled={isCreateAtomDisabled}
-            >
-              {createAtom.isPending ? '作成中...' : 'Atom作成'}
-            </button>
-          </section>
-        </div>
+        <AtomCreatePanel
+          newAtomData={newAtomData}
+          atomDepositEth={atomDepositEth}
+          onUpdateNewAtomData={handleUpdateNewAtomData}
+          onUpdateAtomDeposit={handleUpdateAtomDeposit}
+          onCreateAtom={handleCreateAtom}
+          isCreateAtomDisabled={isCreateAtomDisabled}
+          isPending={createAtom.isPending}
+        />
       )}
 
       {activeTab === 'triple-create' && (
-        <div className="grid">
-          <section className="panel">
-            <h2>Triple 作成</h2>
-            <input
-              className="input"
-              type="text"
-              placeholder="Subject ID"
-              value={tripleSubjectId}
-              onChange={(event) => handleUpdateTripleSubjectId(event.target.value)}
-            />
-            <input
-              className="input"
-              type="text"
-              placeholder="Predicate ID"
-              value={triplePredicateId}
-              onChange={(event) => handleUpdateTriplePredicateId(event.target.value)}
-            />
-            <input
-              className="input"
-              type="text"
-              placeholder="Object ID"
-              value={tripleObjectId}
-              onChange={(event) => handleUpdateTripleObjectId(event.target.value)}
-            />
-            <input
-              className="input"
-              type="text"
-              placeholder="Deposit (ETH)"
-              value={tripleDepositEth}
-              onChange={(event) => handleUpdateTripleDeposit(event.target.value)}
-            />
-            <button
-              type="button"
-              className="button primary"
-              onClick={handleCreateTriple}
-              disabled={isCreateTripleDisabled}
-            >
-              {createTriple.isPending ? '作成中...' : 'Triple作成'}
-            </button>
-          </section>
-        </div>
+        <TripleCreatePanel
+          tripleSubjectId={tripleSubjectId}
+          triplePredicateId={triplePredicateId}
+          tripleObjectId={tripleObjectId}
+          tripleDepositEth={tripleDepositEth}
+          onUpdateTripleSubjectId={handleUpdateTripleSubjectId}
+          onUpdateTriplePredicateId={handleUpdateTriplePredicateId}
+          onUpdateTripleObjectId={handleUpdateTripleObjectId}
+          onUpdateTripleDeposit={handleUpdateTripleDeposit}
+          onCreateTriple={handleCreateTriple}
+          isCreateTripleDisabled={isCreateTripleDisabled}
+          isPending={createTriple.isPending}
+        />
       )}
 
       {activeTab === 'triple-fetch' && (
-        <div className="grid">
-          <section className="panel">
-            <h2>Triple 取得</h2>
-            <input
-              className="input"
-              type="text"
-              placeholder="Triple ID (term_id)"
-              value={fetchTripleId}
-              onChange={(event) => handleUpdateFetchTripleId(event.target.value)}
-            />
-            <div className="muted">IDを入力すると自動で取得します</div>
-            {tripleDetails.isLoading && <div>取得中...</div>}
-            {tripleDetails.data && (
-              <div className="atom-value">
-                <div className="atom-section-title">Triple 詳細</div>
-                <div className="atom-info-grid">
-                  <div className="atom-info">
-                    <div className="atom-info-label">Triple ID</div>
-                    <div className="atom-info-value">
-                      {tripleDetails.data.term_id}
-                    </div>
-                  </div>
-                  <div className="atom-info">
-                    <div className="atom-info-label">Tx</div>
-                    <a
-                      className="atom-info-link"
-                      href={getTransactionUrl(tripleDetails.data.transaction_hash)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {tripleDetails.data.transaction_hash}
-                    </a>
-                  </div>
-                  <div className="atom-info">
-                    <div className="atom-info-label">作成者</div>
-                    <div className="atom-info-value">
-                      {tripleDetails.data.creator?.label ??
-                        tripleDetails.data.creator_id}
-                    </div>
-                  </div>
-                  <div className="atom-info">
-                    <div className="atom-info-label">作成日時</div>
-                    <div className="atom-info-value">
-                      {formatDateLabel(tripleDetails.data.created_at)}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="button"
-                  onClick={handleOpenTripleGraphModal}
-                >
-                  ナレッジグラフ表示
-                </button>
-              </div>
-            )}
-            {!tripleDetails.isLoading &&
-              fetchTripleId &&
-              !tripleDetails.data && (
-                <div className="muted">該当するTripleが見つかりません</div>
-              )}
-            {isTripleGraphModalOpen && tripleDetails.data && (
-              <div
-                className="modal-backdrop"
-                onClick={handleCloseTripleGraphModal}
-              >
-                <div
-                  className="modal"
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label="Triple ナレッジグラフ"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <div className="modal-header">
-                    <div>
-                      <div className="modal-title">Triple ナレッジグラフ</div>
-                      <div className="modal-subtitle">
-                        {tripleDetails.data.term_id}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="modal-close"
-                      onClick={handleCloseTripleGraphModal}
-                    >
-                      閉じる
-                    </button>
-                  </div>
-                  <div className="modal-body">
-                    <div className="triple-graph">
-                      <div className="triple-graph-node">
-                        <div className="triple-graph-label">Subject</div>
-                        <div className="triple-graph-value">
-                          {getNodeLabel(tripleDetails.data.subject)}
-                        </div>
-                      </div>
-                      <div className="triple-graph-link">
-                        <div className="triple-graph-line" />
-                        <div className="triple-graph-badge">
-                          {getNodeLabel(tripleDetails.data.predicate)}
-                        </div>
-                        <div className="triple-graph-arrow">→</div>
-                        <div className="triple-graph-caption">Predicate</div>
-                      </div>
-                      <div className="triple-graph-node">
-                        <div className="triple-graph-label">Object</div>
-                        <div className="triple-graph-value">
-                          {getNodeLabel(tripleDetails.data.object)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
-        </div>
+        <TripleFetchPanel
+          fetchTripleId={fetchTripleId}
+          onUpdateFetchTripleId={handleUpdateFetchTripleId}
+          tripleDetails={tripleDetails}
+          isTripleGraphModalOpen={isTripleGraphModalOpen}
+          onOpenTripleGraphModal={handleOpenTripleGraphModal}
+          onCloseTripleGraphModal={handleCloseTripleGraphModal}
+        />
       )}
 
       {activeTab === 'triple-subject' && (
-        <div className="grid">
-          <section className="panel">
-            <h2>SubjectでTriple一覧取得</h2>
-            <input
-              className="input"
-              type="text"
-              placeholder="Subject ID (term_id)"
-              value={subjectTriplesSubjectId}
-              onChange={(event) =>
-                handleUpdateSubjectTriplesSubjectId(event.target.value)
-              }
-            />
-            <div className="muted">Subject IDを入力すると自動で取得します</div>
-            {subjectTriplesQuery.isLoading && <div>取得中...</div>}
-            {subjectTriplesQuery.isError && (
-              <div className="message error">
-                {subjectTriplesQuery.error instanceof Error
-                  ? subjectTriplesQuery.error.message
-                  : '取得に失敗しました'}
-              </div>
-            )}
-            {subjectTriplesQuery.data && (
-              <div className="atom-value">
-                <div className="atom-section-title">取得結果</div>
-                <div className="muted">
-                  {subjectTriplesQuery.data.totalCount} 件中{' '}
-                  {subjectTriplesFiltered.length} 件を表示
-                </div>
-                <div className="modal-controls">
-                  <input
-                    className="input"
-                    type="text"
-                    placeholder="フィルタ（predicate/object/ID）"
-                    value={subjectTriplesFilterQuery}
-                    onChange={(event) =>
-                      handleUpdateSubjectTriplesFilterQuery(
-                        event.target.value,
-                      )
-                    }
-                  />
-                  <div className="controls-row">
-                    <select
-                      className="select"
-                      value={subjectTriplesSortKey}
-                      onChange={(event) =>
-                        handleUpdateSubjectTriplesSortKey(
-                          event.target.value as SubjectSortKey,
-                        )
-                      }
-                    >
-                      <option value="predicate">predicate</option>
-                      <option value="object">object</option>
-                      <option value="term">term</option>
-                    </select>
-                    <button
-                      type="button"
-                      className="button"
-                      onClick={handleToggleSubjectTriplesSortOrder}
-                    >
-                      {subjectTriplesSortOrder === 'asc' ? '昇順' : '降順'}
-                    </button>
-                    <select
-                      className="select"
-                      value={subjectTriplesLimitCount}
-                      onChange={(event) =>
-                        handleUpdateSubjectTriplesLimit(
-                          Number(event.target.value),
-                        )
-                      }
-                    >
-                      {SUBJECT_TRIPLES_LIMIT_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option} 件
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="controls-row">
-                    <button
-                      type="button"
-                      className="button"
-                      onClick={handlePreviousSubjectTriplesPage}
-                      disabled={subjectTriplesPageIndex === 0}
-                    >
-                      前へ
-                    </button>
-                    <div className="muted">
-                      {subjectTriplesPageIndex + 1} / {subjectTriplesPageCount}
-                    </div>
-                    <button
-                      type="button"
-                      className="button"
-                      onClick={handleNextSubjectTriplesPage}
-                      disabled={
-                        subjectTriplesPageIndex + 1 >= subjectTriplesPageCount
-                      }
-                    >
-                      次へ
-                    </button>
-                  </div>
-                </div>
-                {subjectTriplesFiltered.length === 0 && (
-                  <div className="muted">該当するTripleがありません</div>
-                )}
-                {subjectTriplesFiltered.map((triple) => (
-                  <div key={triple.term_id} className="triple-item">
-                    <span className="triple-node strong">
-                      {getNodeLabel(triple.subject)}
-                    </span>
-                    <span className="triple-arrow">—</span>
-                    <span className="triple-predicate">
-                      {getNodeLabel(triple.predicate)}
-                    </span>
-                    <span className="triple-arrow">→</span>
-                    <span className="triple-node">
-                      {getNodeLabel(triple.object)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
+        <SubjectTriplesPanel
+          subjectTriplesSubjectId={subjectTriplesSubjectId}
+          onUpdateSubjectTriplesSubjectId={handleUpdateSubjectTriplesSubjectId}
+          subjectTriplesQuery={subjectTriplesQuery}
+          subjectTriplesFiltered={subjectTriplesFiltered}
+          subjectTriplesFilterQuery={subjectTriplesFilterQuery}
+          onUpdateSubjectTriplesFilterQuery={handleUpdateSubjectTriplesFilterQuery}
+          subjectTriplesSortKey={subjectTriplesSortKey}
+          onUpdateSubjectTriplesSortKey={handleUpdateSubjectTriplesSortKey}
+          subjectTriplesSortOrder={subjectTriplesSortOrder}
+          onToggleSubjectTriplesSortOrder={handleToggleSubjectTriplesSortOrder}
+          subjectTriplesLimitCount={subjectTriplesLimitCount}
+          onUpdateSubjectTriplesLimit={handleUpdateSubjectTriplesLimit}
+          subjectTriplesPageIndex={subjectTriplesPageIndex}
+          subjectTriplesPageCount={subjectTriplesPageCount}
+          onNextSubjectTriplesPage={handleNextSubjectTriplesPage}
+          onPreviousSubjectTriplesPage={handlePreviousSubjectTriplesPage}
+        />
       )}
     </div>
   )
