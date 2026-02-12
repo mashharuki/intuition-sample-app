@@ -1,4 +1,3 @@
-import type { GetTriplesQuery } from '@0xintuition/graphql'
 import {
   createAtomFromString,
   createTripleStatement,
@@ -6,6 +5,7 @@ import {
   getTripleDetails,
   globalSearch,
 } from '@0xintuition/sdk'
+import type { GetTriplesQuery } from '@0xintuition/graphql'
 import type { TAB_ITEMS } from "./constants"
 
 export type TabKey = (typeof TAB_ITEMS)[number]['key']

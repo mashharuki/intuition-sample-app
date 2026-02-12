@@ -1,15 +1,16 @@
 import type { UseQueryResult } from '@tanstack/react-query'
-import { MAX_TRIPLE_PREVIEW_COUNT } from '../utils/constants'
 import {
   formatDateLabel,
   getAtomPrimaryLabel,
   getAtomSecondaryLabel,
   getAtomValueInfo,
+  getDefaultSortKey,
   getNodeLabel,
-  getTransactionUrl
+  getTransactionUrl,
 } from '../utils/helper'
-import type { AtomDetails, SortKey, SortOrder, TripleKind } from '../utils/types'
 import { getTripleSortValue, tripleIncludesQuery } from '../utils/ui-helper'
+import { MAX_TRIPLE_PREVIEW_COUNT } from '../utils/constants'
+import type { AtomDetails, TripleKind, SortKey, SortOrder } from '../utils/types'
 import { TripleListModal } from './TripleListModal'
 
 interface AtomDetailPanelProps {

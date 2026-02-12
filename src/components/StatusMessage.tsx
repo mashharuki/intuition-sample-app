@@ -1,5 +1,5 @@
-import { SUPPORTED_CHAIN_LABELS } from '../utils/constants'
 import { getTransactionUrl } from '../utils/helper'
+import { SUPPORTED_CHAIN_LABELS } from '../utils/constants'
 
 interface StatusMessageProps {
   statusMessage: string
